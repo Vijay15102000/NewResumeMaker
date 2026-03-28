@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Resume Builder</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html,body,#root{margin:0;padding:0;height:100%;font-family:'Segoe UI',sans-serif}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#f1f1f1}::-webkit-scrollbar-thumb{background:#bbb;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f0c29;color:#fff;font-size:16px;">Loading Resume Builder...</div></div>
+<script type="text/babel" data-presets="react">
+const{useState,useEffect,useRef}=React;
+const NVIDIA_KEY="YOUR_NVIDIA_API_KEY_HERE";
+const HAS_KEY=NVIDIA_KEY&&NVIDIA_KEY!=="YOUR_NVIDIA_API_KEY_HERE";
+const T=[{id:1,n:"Executive Pro",cat:"Corporate",g:"Business",c:"#1a237e",a:"#0d47a1",p:false,al:"center"},{id:2,n:"Tech Innovator",cat:"Technology",g:"Tech",c:"#004d40",a:"#00796b",p:false,al:"left"},{id:3,n:"Creative Edge",cat:"Design/Marketing",g:"Creative",c:"#4a148c",a:"#7b1fa2",p:true,al:"center"},{id:4,n:"Classic Elegance",cat:"Finance/Law",g:"Finance",c:"#1a1a1a",a:"#444444",p:false,al:"left"},{id:5,n:"Modern Minimal",cat:"General",g:"General",c:"#bf360c",a:"#e64a19",p:false,al:"center"},{id:6,n:"Healthcare Pro",cat:"Medical",g:"Healthcare",c:"#006064",a:"#00838f",p:true,al:"center"},{id:7,n:"Academic Scholar",cat:"Education",g:"Education",c:"#1b5e20",a:"#2e7d32",p:false,al:"left"},{id:8,n:"Sales Champion",cat:"Sales/Business",g:"Business",c:"#e65100",a:"#f57c00",p:true,al:"center"},{id:9,n:"Entry Level",cat:"Recent Graduate",g:"General",c:"#283593",a:"#3949ab",p:false,al:"left"},{id:10,n:"Federal Resume",cat:"Government",g:"Government",c:"#37474f",a:"#546e7a",p:false,al:"left"},{id:11,n:"Startup Hustler",cat:"Startup/Tech",g:"Tech",c:"#880e4f",a:"#ad1457",p:false,al:"left"},{id:12,n:"Data Scientist",cat:"Data & Analytics",g:"Tech",c:"#1565c0",a:"#1976d2",p:false,al:"left"},{id:13,n:"Product Manager",cat:"Product",g:"Tech",c:"#4e342e",a:"#6d4c41",p:true,al:"center"},{id:14,n:"UX Designer",cat:"Design",g:"Creative",c:"#00695c",a:"#00897b",p:true,al:"center"},{id:15,n:"Nurse Practitioner",cat:"Nursing/Health",g:"Healthcare",c:"#0d47a1",a:"#1565c0",p:true,al:"center"},{id:16,n:"Legal Professional",cat:"Law",g:"Finance",c:"#1a1a1a",a:"#37474f",p:false,al:"left"},{id:17,n:"Construction Mgr",cat:"Engineering/Trades",g:"Engineering",c:"#e65100",a:"#bf360c",p:false,al:"left"},{id:18,n:"Teacher/Educator",cat:"Education",g:"Education",c:"#1b5e20",a:"#388e3c",p:true,al:"center"},{id:19,n:"Finance Analyst",cat:"Finance",g:"Finance",c:"#1a237e",a:"#283593",p:false,al:"left"},{id:20,n:"Cybersecurity",cat:"Security/IT",g:"Tech",c:"#1a1a1a",a:"#b71c1c",p:false,al:"left"},{id:21,n:"Marketing Manager",cat:"Marketing",g:"Creative",c:"#6a1b9a",a:"#8e24aa",p:true,al:"center"},{id:22,n:"Hospitality Mgr",cat:"Hospitality",g:"General",c:"#795548",a:"#8d6e63",p:true,al:"center"},{id:23,n:"Logistics/Supply",cat:"Supply Chain",g:"Engineering",c:"#2e7d32",a:"#388e3c",p:false,al:"left"},{id:24,n:"Creative Writer",cat:"Media/Journalism",g:"Creative",c:"#4a148c",a:"#6a1b9a",p:false,al:"center"},{id:25,n:"HR Professional",cat:"Human Resources",g:"Business",c:"#c62828",a:"#d32f2f",p:true,al:"center"}];
+
+// Tech templates use detailed skill categories; all others use flat "Technical Skills" field
+const TECH_IDS=new Set([2,11,12,13,14,20]);
+
+const GALLERY_GROUPS=[
+  {key:"Tech",       label:"💻 Technology",    desc:"Software, Data, Product, Security",  color:"#004d40"},
+  {key:"Healthcare", label:"🏥 Healthcare",     desc:"Medical, Nursing, Health",            color:"#006064"},
+  {key:"Finance",    label:"💰 Finance & Law",  desc:"Finance, Accounting, Legal",         color:"#1a237e"},
+  {key:"Education",  label:"🎓 Education",      desc:"Teaching, Research, Academia",        color:"#1b5e20"},
+  {key:"Creative",   label:"🎨 Creative",       desc:"Design, Marketing, Writing",          color:"#4a148c"},
+  {key:"Business",   label:"🏢 Business",       desc:"Corporate, Sales, HR",                color:"#e65100"},
+  {key:"Engineering",label:"⚙️ Engineering",   desc:"Construction, Logistics, Trades",     color:"#2e7d32"},
+  {key:"Government", label:"🏛️ Government",    desc:"Federal, Public Sector",              color:"#37474f"},
+  {key:"General",    label:"📄 General",        desc:"Entry Level, Modern, Minimal",        color:"#bf360c"},
+];
+const KW={default:["led","managed","developed","implemented","increased","reduced","improved","delivered","collaborated","optimized","analyzed","designed","automated","launched"],"software engineer":["architected","deployed","optimized","CI/CD","microservices","REST API","Docker","Kubernetes","unit testing","scalability","agile","code review"],"frontend engineer":["React","Vue","Angular","TypeScript","responsive design","Web Vitals","state management","lazy loading","A/B testing"],"backend engineer":["Node.js","REST API","GraphQL","Redis","caching","JWT","microservices","load balancing","CI/CD","database optimization"],"data scientist":["machine learning","Python","TensorFlow","PyTorch","predictive model","feature engineering","SQL","data pipeline","NLP"],"product manager":["roadmap","OKRs","user research","A/B testing","KPIs","stakeholder alignment","sprint planning","user stories","go-to-market","NPS"],"ux designer":["user research","wireframes","prototypes","Figma","usability testing","design system","accessibility","user journey"],"marketing manager":["campaign ROI","lead generation","conversion rate","SEO","SEM","email marketing","HubSpot","brand awareness"],"sales manager":["quota attainment","revenue growth","pipeline","CRM","Salesforce","deal closure","upselling","win rate"],"hr professional":["talent acquisition","onboarding","performance management","HRIS","employee engagement","compliance","retention"],"project manager":["on-time delivery","budget management","risk mitigation","Agile","Scrum","PMP","milestone","resource allocation"],"finance analyst":["financial modeling","DCF","variance analysis","P&L","budget forecasting","Excel","EBITDA","reconciliation"],"cybersecurity analyst":["SIEM","penetration testing","vulnerability assessment","NIST","SOC","incident response","zero-trust","OWASP"]};
+function getKW(title,skills){const t=(title||"").toLowerCase().trim();let k=KW[t]||(KW[Object.keys(KW).find(k2=>t.includes(k2))||"default"]||KW.default);const sk=Object.values(skills||{}).filter(Boolean).join(",").split(",").map(s=>s.trim()).filter(s=>s.length>2).slice(0,8);return[...new Set([...k,...sk])].slice(0,20);}
+function boldKW(text,kws){if(!text||!kws||!kws.length)return text;const safe=kws.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));return text.replace(new RegExp("("+safe.join("|")+")","gi"),"<strong>$1</strong>");}
+const TLIST=["React","Vue","Angular","Next.js","TypeScript","JavaScript","HTML","CSS","Tailwind","Node.js","Express","FastAPI","Django","Flask","Spring","Python","Java","Go","Rust","C#","PHP","Ruby","Kotlin","Swift","AWS","Azure","GCP","Docker","Kubernetes","Terraform","CI/CD","GitHub Actions","Jenkins","PostgreSQL","MySQL","MongoDB","Redis","Elasticsearch","Oracle","SQL","PL/SQL","GraphQL","REST API","Kafka","Spark","Airflow","BigQuery","Snowflake","Git","JIRA","Figma","Linux","TensorFlow","PyTorch","Pandas","Tableau","Power BI","Excel","Salesforce","SAP",".NET","ASP.NET","Agile","Scrum","DevOps","Machine Learning","NLP","Oracle Siebel","Siebel CRM","PeopleSoft","Selenium","Jest","Postman","Datadog","Prometheus","Grafana"];
+const SLIST=["communication","leadership","teamwork","collaboration","problem solving","critical thinking","time management","attention to detail","adaptability","analytical","interpersonal","stakeholder","cross-functional","mentoring","negotiation"];
+function extractTech(text){
+  const found=new Set();
+  const rxs=[/required\s+skill[s]?\s*[:\-]\s*([^\n]{2,120})/gi,/must[\s\-]have\s+skill[s]?\s*[:\-]\s*([^\n]{2,120})/gi,/must\s+to\s+have\s+skill[s]?\s*[:\-]\s*([^\n]{2,120})/gi,/technical\s+skill[s]?\s*[:\-]\s*([^\n]{2,120})/gi,/proficiency\s+in\s+([A-Za-z0-9 .,\/+#\-]{3,80}?)(?:\.|$|\n)/gi,/experience\s+(?:with|in)\s+([A-Za-z0-9 .,\/+#\-]{3,80}?)(?:\.|$|\n|,)/gi,/knowledge\s+of\s+([A-Za-z0-9 .,\/+#\-]{3,80}?)(?:\.|$|\n)/gi,/familiarity\s+with\s+([A-Za-z0-9 .,\/+#\-]{3,80}?)(?:\.|$|\n)/gi];
+  const noise=new Set(["and","or","the","with","for","in","of","a","an","is","are","be","by","at","to","as","on","etc","na","good","have","has","strong","ability","skills","experience","knowledge","background","understanding","proficiency","familiarity","working","application","development","software","testing","debugging","database","management","techniques","practices","frameworks","solutions"]);
+  rxs.forEach(rx=>{rx.lastIndex=0;let m;while((m=rx.exec(text))!==null){m[1].split(/[,&\/]|\band\b/i).map(p=>p.replace(/\(.*?\)/g,"").replace(/^\W+|\W+$/g,"").replace(/^(proficiency in|experience with|experience in|knowledge of|familiarity with)\s+/i,"").trim()).filter(p=>p.length>=2&&p.length<=60&&!/^(na|n\/a|none|tbd)$/i.test(p)).forEach(p=>{if(!noise.has(p.toLowerCase()))found.add(p);});}});
+  TLIST.forEach(tech=>{const esc=tech.replace(/[+.]/g,"\\$&");if(new RegExp("\\b"+esc+"\\b","i").test(text))found.add(tech);});
+  let arr=[...found].filter(s=>s.length>1&&!noise.has(s.toLowerCase()));
+  const seen=new Map();arr.forEach(s=>{const k=s.toLowerCase();if(!seen.has(k)||s.length>seen.get(k).length)seen.set(k,s);});
+  const vals=[...seen.values()];
+  return vals.filter(s=>!vals.some(o=>o!==s&&o.toLowerCase().includes(s.toLowerCase())&&o.length>s.length)).slice(0,20);
+}
+function localAnalyse(raw){
+  if(!raw||raw.length<50)return null;
+  let text=raw;
+  const nm=[/similar\s+jobs?\b/i,/discover\s+where\s+this\s+job/i,/about\s+accenture/i,/important\s+notice/i,/privacy\s+statement/i,/cookie\s+policy/i];
+  for(const rx of nm){const idx=text.search(rx);if(idx>200){text=text.slice(0,idx);break;}}
+  let jobTitle=null;
+  const trxs=[/project\s+role\s*[:\-]\s*([^\n|]{3,60})/i,/position\s*[:\-]\s*([^\n]{3,60})/i,/(?:looking\s+for|hiring)\s+([A-Z][^\n,.]{3,55})/i];
+  for(const rx of trxs){const m=text.match(rx);if(m){jobTitle=m[1].replace(/\s*[|].*/,"").trim();break;}}
+  if(!jobTitle){const m=text.match(/^([A-Z][A-Za-z\s\/\-]{5,55})$/m);if(m)jobTitle=m[1].trim();}
+  let company=null;
+  const cm=text.match(/about\s+([A-Z][A-Za-z0-9\s&,.]{2,40}?)(?:\s*\n)/i);
+  if(cm&&!/^(us|our|the)$/i.test(cm[1].trim()))company=cm[1].trim();
+  let experienceYears=null;
+  const erxs=[[/minimum\s+(\d+)\s*year/i,m=>m[1]+"+ years"],[/(\d+)\s*\+\s*years?/i,m=>m[1]+"+ years"],[/(\d+)\s*[-]\s*(\d+)\s*years?/i,m=>m[1]+"-"+m[2]+" years"],[/at\s+least\s+(\d+)\s*years?/i,m=>m[1]+"+ years"]];
+  for(const[rx,fmt]of erxs){const m=text.match(rx);if(m){experienceYears=fmt(m);break;}}
+  let experienceLevel=null;
+  if(/\b(junior|entry[\s-]level|associate|fresher)\b/i.test(text))experienceLevel="Junior";
+  else if(/\b(senior|sr\.?|lead|principal|staff)\b/i.test(text))experienceLevel="Senior";
+  else if(/\b(mid[\s-]level|intermediate)\b/i.test(text))experienceLevel="Mid-level";
+  else if(/\b(manager|director|head\s+of|vp)\b/i.test(text))experienceLevel="Lead";
+  const nm2=text.match(/(?:good\s+to\s+have|nice[\s-]to[\s-]have|preferred)[:\s\n]([\s\S]{0,600})/i);
+  const nt=nm2?nm2[1]:"";const mt=nm2?text.slice(0,nm2.index):text;
+  const techStack=extractTech(mt);
+  const niceToHave=nt?extractTech(nt).filter(s=>!techStack.some(t=>t.toLowerCase()===s.toLowerCase())):[];
+  const softSkills=SLIST.filter(p=>new RegExp(p,"i").test(text)).map(p=>p.replace(/\b\w/g,c=>c.toUpperCase()));
+  let workMode=null;
+  if(/\bfully\s+remote\b|\bwork\s+from\s+home\b/i.test(text))workMode="Remote";
+  else if(/\bhybrid\b/i.test(text))workMode="Hybrid";
+  else if(/\bon[\s-]site\b|\bin[\s-]office\b/i.test(text))workMode="On-site";
+  let salaryRange=null;
+  const sm=text.match(/[A-Z$][0-9,]+\s*(?:[-]\s*[A-Z$]?[0-9,]+)?\s*(?:LPA|lpa|k|per\s+annum)?/);
+  if(sm)salaryRange=sm[0].trim();
+  const requirements=text.split("\n").filter(l=>/^\s*[-*]\s+.{15,}/.test(l)).map(l=>l.replace(/^\s*[-*]\s*/,"").trim()).filter(Boolean).slice(0,7);
+  const verbs=["led","managed","built","developed","designed","implemented","deployed","optimized","reduced","increased","delivered","automated","launched","architected"];
+  const keywords=[...new Set([...techStack.slice(0,12),...verbs.filter(v=>new RegExp("\\b"+v+"\\b","i").test(text))])].slice(0,20);
+  let summary="";
+  const sM=text.match(/summary[:\s\n]+([\s\S]{40,400}?)(?:\n\n|\nRoles|\nJob)/i);
+  if(sM)summary=sM[1].replace(/\n/g," ").trim().slice(0,280);
+  if(!summary){const p=text.split("\n\n").find(p=>p.trim().length>80)||"";summary=p.replace(/\n/g," ").trim().slice(0,280);}
+  if(!summary)summary="We are looking for a "+(jobTitle||"qualified professional")+" to join the team.";
+  return{jobTitle,company,experienceYears,experienceLevel,techStack,softSkills,keywords,requirements,niceToHave,salaryRange,workMode,summary};
+}
+async function fetchPage(rawUrl){
+  const enc=encodeURIComponent(rawUrl);
+
+  // Strategy 1: Jina Reader — designed for text extraction from any URL, works on most job sites
+  try{
+    const r=await fetch("https://r.jina.ai/"+rawUrl,{
+      headers:{"Accept":"text/plain","X-Return-Format":"text"},
+      signal:AbortSignal.timeout(15000)
+    });
+    if(r.ok){
+      const t=await r.text();
+      if(t&&t.length>300)return t.replace(/\s{3,}/g," ").trim();
+    }
+  }catch(e){}
+
+  // Strategy 2: Jina without headers (fallback)
+  try{
+    const r=await fetch("https://r.jina.ai/"+rawUrl,{signal:AbortSignal.timeout(12000)});
+    if(r.ok){
+      const t=await r.text();
+      if(t&&t.length>300)return t.replace(/\s{3,}/g," ").trim();
+    }
+  }catch(e){}
+
+  // Strategy 3: corsproxy.io
+  try{
+    const r=await fetch("https://corsproxy.io/?"+enc,{signal:AbortSignal.timeout(10000)});
+    if(r.ok){
+      const html=await r.text();
+      if(html&&html.length>300){const txt=htmlToText(html);if(txt&&txt.length>150)return txt;}
+    }
+  }catch(e){}
+
+  // Strategy 4: allorigins
+  try{
+    const r=await fetch("https://api.allorigins.win/get?url="+enc,{signal:AbortSignal.timeout(10000)});
+    if(r.ok){
+      const j=await r.json();
+      const html=j?.contents||"";
+      if(html.length>300){const txt=htmlToText(html);if(txt&&txt.length>150)return txt;}
+    }
+  }catch(e){}
+
+  // Strategy 5: thingproxy
+  try{
+    const r=await fetch("https://thingproxy.freeboard.io/fetch/"+rawUrl,{signal:AbortSignal.timeout(10000)});
+    if(r.ok){
+      const html=await r.text();
+      if(html&&html.length>300){const txt=htmlToText(html);if(txt&&txt.length>150)return txt;}
+    }
+  }catch(e){}
+
+  return null;
+
+  function htmlToText(html){
+    try{
+      const div=document.createElement("div");div.innerHTML=html;
+      ["script","style","nav","header","footer","noscript","aside"].forEach(t=>div.querySelectorAll(t).forEach(el=>el.remove()));
+      const sel=["[class*='job-description']","[class*='jobDescription']","[class*='description__text']","[id*='job-description']","[class*='job-details']","[class*='jobDetails']","main","article","[role='main']","body"];
+      for(const s of sel){
+        try{
+          const el=div.querySelector(s);
+          if(el){const t=(el.innerText||el.textContent||"").replace(/\s{3,}/g," ").trim();if(t.length>200)return t;}
+        }catch(e){}
+      }
+      return(div.innerText||div.textContent||"").replace(/\s{3,}/g," ").trim();
+    }catch(e){return"";}
+  }
+}
+const uid=()=>Math.random().toString(36).slice(2,8);
+const parseBullets=s=>(s||"").split("\n").map(x=>x.replace(/^[-*]\s*/,"").trim()).filter(Boolean);
+const fmtDate=v=>{if(!v)return"";const[y,m]=v.split("-");const mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return m?mo[+m-1]+" "+y:y;};
+const http=u=>!u?"":/^https?:\/\//i.test(u)?u:"https://"+u;
+const escR=s=>!s?"":String(s).replace(/\\/g,"\\\\").replace(/\{/g,"\\{").replace(/\}/g,"\\}");
+function allSkills(sk){
+  // Tech templates: return labelled categories
+  const cats=[
+    sk.frontend&&"Frontend: "+sk.frontend,
+    sk.backend&&"Backend: "+sk.backend,
+    sk.cloud&&"Cloud: "+sk.cloud,
+    sk.database&&"Database: "+sk.database,
+    sk.tools&&"Tools: "+sk.tools,
+  ].filter(Boolean);
+  // other field — always include as plain text (no label prefix)
+  const other=sk.other?sk.other.trim():"";
+  return{cats,other};
+}
+function buildHTML(tpl,data){
+  const{c:color,a:accent,al:align,p:hasPhoto}=tpl;
+  const isLeft=align==="left";
+  const nameSz=isLeft?"24px":"15px";
+  const fn=(data.firstName+" "+data.lastName).trim();
+  const{cats:sc,other:scOther}=allSkills(data.skills);
+  const awards=(data.awards||"").split("\n").map(s=>s.trim()).filter(Boolean);
+  const langs=(data.languages||"").split(",").map(s=>s.trim()).filter(Boolean);
+  const cj=data.experience.find(e=>e.current&&e.title)||data.experience.find(e=>e.title);
+  const dt=(data.jobTitle||"").trim()||(cj?cj.title:"");
+  const cc=cj&&cj.current?cj.company:"";
+  const kws=getKW(dt,data.skills);
+  const LH="line-height:1.15;";const HA=isLeft?"left":"center";
+  const lnk=(u,label)=>u?'<a href="'+http(u)+'" target="_blank" style="color:inherit;text-decoration:none;">'+(label?'<span style="font-weight:700;">'+label+':</span> <span style="color:'+color+';">'+u+'</span>':u)+"</a>":"";
+  const ctc=[
+    data.email?'<a href="mailto:'+data.email+'" style="color:inherit;text-decoration:none;"><span style="font-weight:700;">Email:</span> '+data.email+"</a>":"",
+    data.phone?'<a href="tel:'+data.phone+'" style="color:inherit;text-decoration:none;"><span style="font-weight:700;">Phone:</span> '+data.phone+"</a>":"",
+    data.location?'<span style="font-weight:700;">Location:</span> '+data.location:"",
+    data.linkedin?lnk(data.linkedin,"LinkedIn"):"",
+    data.github?lnk(data.github,"GitHub"):"",
+    data.website?lnk(data.website,"Portfolio"):"",
+  ].filter(Boolean).join(" &nbsp;|&nbsp; ");
+  const sec=t=>'<div style="border-bottom:2px solid '+color+';margin:11px 0 5px;padding-bottom:2px;font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:'+color+';text-align:'+HA+';'+LH+'">'+t+"</div>";
+  const expB=data.experience.filter(e=>e.company||e.title).map(e=>{
+    const dates=[fmtDate(e.startDate),e.current?"Present":fmtDate(e.endDate)].filter(Boolean).join(" - ");
+    const bls=parseBullets(e.bullets);
+    return'<div style="margin-bottom:9px;'+LH+'"><div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;'+LH+'"><span style="font-weight:700;font-size:12px;">'+(e.title||"")+(e.company?' <span style="font-weight:400;font-style:italic;color:#555;">@ '+e.company+"</span>":"")+(e.current?' <span style="font-size:9px;background:'+color+';color:#fff;padding:1px 6px;border-radius:10px;font-weight:700;">Current</span>':"")+'</span><span style="font-size:10px;color:#666;white-space:nowrap;">'+dates+(e.location?" | "+e.location:"")+"</span></div>"+(bls.length?'<ul style="margin:4px 0 0 18px;padding:0;'+LH+'">'+bls.map(b=>'<li style="font-size:10px;'+LH+'margin-bottom:3px;">'+boldKW(b,kws)+"</li>").join("")+"</ul>":"")+"</div>";
+  }).join("");
+  const eduB=data.education.filter(e=>e.school).map(e=>{
+    const gpaStr=e.gpa?(e.gpa+" / "+(e.gpaScale||"10")):"";
+    return'<div style="margin-bottom:7px;display:flex;justify-content:space-between;flex-wrap:wrap;'+LH+'"><div><div style="font-weight:700;font-size:12px;'+LH+'">'+(e.degree||"")+(e.field?" in "+e.field:"")+'</div><div style="font-size:10px;color:#444;'+LH+'">'+e.school+(e.honors?" - "+e.honors:"")+(gpaStr?" | CGPA: "+gpaStr:"")+'</div></div><span style="font-size:10px;color:#666;white-space:nowrap;">'  +[fmtDate(e.startDate),fmtDate(e.endDate)].filter(Boolean).join(" - ")+"</span></div>";
+  }).join("");
+  const certsA=data.certifications.filter(c=>c.name);
+  const certB=certsA.length?'<ul style="margin:4px 0 0 18px;padding:0;'+LH+'">'+certsA.map(c=>'<li style="font-size:10px;'+LH+'margin-bottom:3px;"><strong>'+c.name+"</strong>"+(c.issuer?" - "+c.issuer:"")+(c.date?' <span style="color:#666;">('+fmtDate(c.date)+(c.expiry?" - "+fmtDate(c.expiry):"")+")</span>":"")+"</li>").join("")+"</ul>":"";
+  const skB=(sc.length||scOther)?
+    '<ul style="margin:4px 0 0 18px;padding:0;'+LH+'">'+
+    sc.map(cat=>{const i=cat.indexOf(": ");return'<li style="font-size:10px;'+LH+'margin-bottom:3px;"><span style="font-weight:700;color:'+color+';">'+cat.slice(0,i)+":</span> "+cat.slice(i+2)+"</li>";}).join("")+
+    (scOther?'<li style="font-size:10px;'+LH+'margin-bottom:3px;">'+scOther+"</li>":"")+
+    "</ul>":"";
+  const projA=data.projects.filter(p=>p.name);
+  const projB=projA.length?'<ul style="margin:4px 0 0 18px;padding:0;'+LH+'">'+projA.map(p=>'<li style="font-size:10px;'+LH+'margin-bottom:5px;"><strong>'+p.name+"</strong>"+(p.tech?' <span style="color:#666;font-size:10px;">['+p.tech+"]</span>":"")+(p.description?"<div>"+boldKW(p.description,kws)+"</div>":"")+(p.url?"<div>"+lnk(p.url)+"</div>":"")+"</li>").join("")+"</ul>":"";
+  const pubA=data.publications.filter(p=>p.title);
+  const pubB=pubA.length?'<ol style="margin:4px 0 0 18px;padding:0;'+LH+'">'+pubA.map(p=>'<li style="font-size:10px;'+LH+'margin-bottom:4px;">'+(p.authors?p.authors+". ":"")+"<em>"+p.title+"</em>"+(p.journal?". "+p.journal:"")+(p.year?" ("+p.year+")":"")+".</li>").join("")+"</ol>":"";
+  const awB=awards.length?'<ul style="margin:4px 0 0 18px;padding:0;'+LH+'">'+awards.map(a=>'<li style="font-size:10px;'+LH+'margin-bottom:3px;">'+a+"</li>").join("")+"</ul>":"";
+  const lgB=langs.length?'<ul style="margin:4px 0 0 18px;padding:0;'+LH+'">'+langs.map(l=>'<li style="font-size:10px;'+LH+'margin-bottom:2px;">'+l+"</li>").join("")+"</ul>":"";
+  const pad="padding:13mm;";
+  if(hasPhoto){
+    const ph=data.photoPreview?'<img src="'+data.photoPreview+'" style="width:90px;height:90px;border-radius:6px;object-fit:cover;border:2px solid '+color+';display:block;flex-shrink:0;" alt="photo"/>':"";
+    return'<div style="font-family:Arial,sans-serif;font-size:10px;'+pad+'color:#222;background:#fff;'+LH+'"><div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid '+color+';'+LH+'">'+ph+'<div style="flex:1;"><h1 style="font-size:'+nameSz+';font-weight:800;color:'+color+';margin:0;'+LH+'">'+fn+"</h1>"+(dt?'<div style="font-size:12px;color:'+accent+';margin-top:3px;font-style:italic;'+LH+'">'+dt+(cc?" - <strong>"+cc+"</strong>":"")+"</div>":"")+'<div style="font-size:10px;color:#555;margin-top:5px;'+LH+'">'+ctc+"</div></div></div>"+(data.summary?sec("Summary")+'<p style="font-size:10px;'+LH+'margin:0;">'+data.summary+"</p>":"")+(expB?sec("Work Experience")+expB:"")+(eduB?sec("Education")+eduB:"")+(skB?sec("Skills")+skB:"")+(certB?sec("Certifications")+certB:"")+(projB?sec("Projects")+projB:"")+(awB?sec("Awards")+awB:"")+(lgB?sec("Languages")+lgB:"")+"</div>";
+  }
+  if(isLeft){
+    const isFed=tpl.id===10,isAcad=tpl.id===7;
+    const banner=isFed?'<div style="background:'+color+';color:#fff;padding:12px 18px;margin:-22px -26px 14px;'+LH+'"><h1 style="font-size:24px;font-weight:800;margin:0;'+LH+'">'+fn+"</h1>"+(dt?'<div style="font-size:12px;color:#ffffffcc;margin-top:3px;'+LH+'">'+dt+(cc?" - "+cc:"")+"</div>":"")+'<div style="font-size:10px;color:#ffffffcc;margin-top:5px;'+LH+'">'+ctc+"</div></div>":"";
+    const stdH=isFed?"":'<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid '+color+';'+LH+'"><h1 style="font-size:24px;font-weight:800;color:'+color+';margin:0;'+LH+'">'+fn+"</h1>"+(dt?'<div style="font-size:12px;color:'+accent+';margin-top:3px;font-style:italic;'+LH+'">'+dt+(cc?' - <strong style="color:'+color+';">'+cc+"</strong>":"")+"</div>":"")+'<div style="font-size:10px;color:#555;margin-top:5px;'+LH+'">'+ctc+"</div></div>";
+    const fedM=isFed?(data.citizenship?'<div style="font-size:10px;margin-bottom:3px;'+LH+'"><b>Citizenship:</b> '+data.citizenship+"</div>":"")+(data.securityClearance?'<div style="font-size:10px;margin-bottom:3px;'+LH+'"><b>Security Clearance:</b> '+data.securityClearance+"</div>":"")+(data.federalGrade?'<div style="font-size:10px;margin-bottom:11px;'+LH+'"><b>Grade/Series:</b> '+data.federalGrade+"</div>":""):"";
+    return'<div style="font-family:Arial,sans-serif;font-size:10px;'+pad+'color:#222;background:#fff;'+LH+'">'+banner+stdH+fedM+(data.summary?sec("Professional Summary")+'<p style="font-size:10px;'+LH+'margin:0;">'+data.summary+"</p>":"")+(skB?sec("Skills")+skB:"")+(expB?sec("Work Experience")+expB:"")+(isAcad&&pubB?sec("Publications")+pubB:"")+(projB?sec("Projects")+projB:"")+(eduB?sec("Education")+eduB:"")+(certB?sec("Certifications")+certB:"")+(awB?sec("Awards")+awB:"")+(lgB?sec("Languages")+lgB:"")+"</div>";
+  }
+  return'<div style="font-family:Arial,sans-serif;font-size:10px;'+pad+'color:#222;background:#fff;'+LH+'">'+(tpl.id===5?'<div style="height:3px;background:'+color+';margin-bottom:10px;border-radius:2px;"></div>':"")+'<div style="text-align:center;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid '+color+';'+LH+'"><h1 style="font-size:'+nameSz+';font-weight:800;color:'+color+';margin:0;'+LH+'">'+fn+"</h1>"+(dt?'<div style="font-size:12px;color:'+accent+';margin-top:4px;font-style:italic;'+LH+'">'+dt+(cc?' - <strong style="color:'+color+';">'+cc+"</strong>":"")+"</div>":"")+'<div style="font-size:10px;color:#555;margin-top:6px;'+LH+'">'+ctc+"</div></div>"+(data.summary?sec("Professional Summary")+'<p style="font-size:10px;'+LH+'margin:0;">'+data.summary+"</p>":"")+(expB?sec("Work Experience")+expB:"")+(eduB?sec("Education")+eduB:"")+(skB?sec("Skills")+skB:"")+(certB?sec("Certifications")+certB:"")+(projB?sec("Projects")+projB:"")+(awB?sec("Awards")+awB:"")+(lgB?sec("Languages")+lgB:"")+"</div>";
+}
+function dlPDF(tpl,data){
+  const fname=(data.firstName||"").trim();const lname=(data.lastName||"").trim();
+  const pdfName=fname&&lname?fname+" "+lname:fname||lname||"Resume";
+  const body=buildHTML(tpl,data);
+  const page='<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>'+pdfName+'</title><style>'
+  +'@page{size:A4 portrait;margin:13mm}'
+  +'*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}'
+  +'html,body{margin:0!important;padding:0!important;background:#fff;font-family:Arial,sans-serif;font-size:10px}'
+  +'body>div{padding:0!important;max-width:none!important;margin:0!important}'
+  +'a{color:inherit;text-decoration:none}'
+  +'ul,ol{margin:3px 0 0 16px;padding:0}'
+  +'li{margin-bottom:2px;line-height:1.15}'
+  +'p,div{line-height:1.15}'
+  +'h1{margin:0;padding:0}'
+  +'strong{font-weight:700}'
+  +'</style></head><body>'+body+'</body></html>';
+  const old=document.getElementById('__rf');
+  if(old)old.remove();
+  const f=document.createElement('iframe');
+  f.id='__rf';
+  f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+  document.body.appendChild(f);
+  const d=f.contentDocument||f.contentWindow.document;
+  d.open();d.write(page);d.close();
+  setTimeout(()=>{
+    const origTitle=document.title;
+    document.title=pdfName;
+    f.contentWindow.focus();
+    f.contentWindow.print();
+    setTimeout(()=>{document.title=origTitle;if(f.parentNode)f.remove();},4000);
+  },1000);
+}
+function dlDOCX(tpl,data){
+  const name=(data.firstName+" "+data.lastName).trim();
+  const{cats,other:skOther}=allSkills(data.skills);
+  const allCats=[...cats,...(skOther?[skOther]:[])]; 
+  const col=tpl.c.replace("#","");const r=parseInt(col.slice(0,2),16),g=parseInt(col.slice(2,4),16),b=parseInt(col.slice(4,6),16);
+  const contact=[data.email,data.phone,data.location,data.linkedin,data.github,data.website].filter(Boolean).join("  |  ");
+  const cj=data.experience.find(e=>e.current&&e.title)||data.experience.find(e=>e.title);
+  const dt=(data.jobTitle||"").trim()||(cj?cj.title:"");
+  // A4 paper: 11906 twips wide x 16838 twips tall, margins 1134 twips (~20mm)
+  const secR=t=>"\\pard\\sb120\\sa40{\\b\\fs22\\cf1 "+t.toUpperCase()+"}\\par\\pard{\\cf1 "+"_".repeat(58)+"}\\par\n";
+  const bul=t=>"\\pard\\li280\\fi-180\\sb20{\\fs20 \\bullet  "+escR(t)+"}\\par\n";
+  let rtf="{\\rtf1\\ansi\\deff0\n{\\fonttbl{\\f0 Arial;}{\\f1 Georgia;}}\n{\\colortbl;\\red"+r+"\\green"+g+"\\blue"+b+";\\red80\\green80\\blue80;}\n"
+    +"\\paperw11906\\paperh16838\\margl737\\margr737\\margt737\\margb737\n"
+    +"\\f0\\fs20\\cf0\n";
+  // Name
+  rtf+="\\pard\\qc{\\f1\\fs32\\b\\cf1 "+escR(name)+"}\\par\n";
+  if(dt)rtf+="\\pard\\qc{\\fs22\\i "+escR(dt)+"}\\par\n";
+  rtf+="\\pard\\qc{\\fs18\\cf2 "+escR(contact)+"}\\par\\sb60\\par\n";
+  // Summary
+  if(data.summary){rtf+=secR("Summary");rtf+="\\pard\\sb40\\sa40{\\fs20 "+escR(data.summary)+"}\\par\n";}
+  // Experience
+  const exps=data.experience.filter(e=>e.company||e.title);
+  if(exps.length){
+    rtf+=secR("Work Experience");
+    exps.forEach(e=>{
+      const d2=[fmtDate(e.startDate),e.current?"Present":fmtDate(e.endDate)].filter(Boolean).join(" - ");
+      rtf+="\\pard\\sb80{\\b\\fs21 "+escR(e.title||"")+"}"+(e.company?" {\\i - "+escR(e.company)+"}":" ")+(d2?"  {\\fs18\\cf2 "+escR(d2)+"}":"")+"\\par\n";
+      if(e.location)rtf+="\\pard{\\fs18\\cf2 "+escR(e.location)+"}\\par\n";
+      parseBullets(e.bullets).forEach(bl=>{rtf+=bul(bl);});
+      rtf+="\\par\n";
+    });
+  }
+  // Education
+  const edus=data.education.filter(e=>e.school);
+  if(edus.length){
+    rtf+=secR("Education");
+    edus.forEach(e=>{
+      const d2=[fmtDate(e.startDate),fmtDate(e.endDate)].filter(Boolean).join(" - ");
+      rtf+="\\pard\\sb80{\\b\\fs21 "+escR((e.degree||"")+(e.field?" in "+e.field:""))+"}"+(d2?"  {\\fs18\\cf2 "+escR(d2)+"}":"")+"\\par\n";
+      rtf+="\\pard{\\fs20\\i "+escR(e.school)+"}"+(e.gpa?" {\\fs18 | CGPA: "+escR(e.gpa+" / "+(e.gpaScale||"10"))+"}":"")+(e.honors?" {\\fs18 | "+escR(e.honors)+"}":"")+"\\par\\par\n";
+    });
+  }
+  // Skills
+  if(allCats.length){rtf+=secR("Skills");allCats.forEach(s=>{rtf+="\\pard\\sb30{\\fs20 "+escR(s)+"}\\par\n";});}
+  // Certifications
+  const certs=data.certifications.filter(c=>c.name);
+  if(certs.length){
+    rtf+=secR("Certifications");
+    certs.forEach(c=>{
+      rtf+="\\pard\\sb40{\\b\\fs20 "+escR(c.name)+"}"+(c.issuer?" {\\fs18 - "+escR(c.issuer)+"}":"")+(c.date?" {\\fs18 ("+escR(fmtDate(c.date))+(c.expiry?" - "+escR(fmtDate(c.expiry)):"")+")}":" ")+"\\par\n";
+    });
+    rtf+="\\par\n";
+  }
+  // Projects
+  const projs=data.projects.filter(p=>p.name);
+  if(projs.length){
+    rtf+=secR("Projects");
+    projs.forEach(p=>{
+      rtf+="\\pard\\sb60{\\b\\fs21 "+escR(p.name)+"}"+(p.tech?" {\\fs18\\cf2 ["+escR(p.tech)+"]}":" ")+"\\par\n";
+      if(p.description)rtf+="\\pard{\\fs20 "+escR(p.description)+"}\\par\n";
+      if(p.url)rtf+="\\pard{\\fs18\\cf2 "+escR(p.url)+"}\\par\n";
+      rtf+="\\par\n";
+    });
+  }
+  // Awards
+  const awds=(data.awards||"").split("\n").map(s=>s.trim()).filter(Boolean);
+  if(awds.length){rtf+=secR("Awards");awds.forEach(a=>{rtf+=bul(a);});rtf+="\\par\n";}
+  // Languages
+  const langs=(data.languages||"").split(",").map(s=>s.trim()).filter(Boolean);
+  if(langs.length){rtf+=secR("Languages");langs.forEach(l=>{rtf+=bul(l);});rtf+="\\par\n";}
+  rtf+="}";
+  const url=URL.createObjectURL(new Blob([rtf],{type:"application/msword"}));
+  const fname=(data.firstName||"").trim();const lname=(data.lastName||"").trim();
+  const a=document.createElement("a");a.href=url;a.download=(fname&&lname?fname+lname:fname||lname||"Resume").replace(/\s+/g,"")+".doc";a.click();URL.revokeObjectURL(url);
+}
+const ESK={frontend:"",backend:"",cloud:"",tools:"",database:"",other:""};
+const EF={firstName:"",lastName:"",email:"",phone:"",location:"",linkedin:"",github:"",website:"",photoPreview:null,jobTitle:"",summary:"",experience:[{id:"e1",company:"",title:"",startDate:"",endDate:"",current:false,location:"",bullets:""}],education:[{id:"d1",school:"",degree:"",field:"",gpa:"",gpaScale:"10",startDate:"",endDate:"",honors:""}],skills:{...ESK},certifications:[{id:"c1",name:"",issuer:"",date:"",expiry:""}],projects:[{id:"p1",name:"",tech:"",description:"",url:""}],publications:[{id:"b1",title:"",journal:"",year:"",authors:""}],awards:"",languages:"",volunteer:"",citizenship:"",securityClearance:"",federalGrade:""};
+const IB={width:"100%",padding:"6px 9px",border:"1px solid #ddd",borderRadius:5,fontSize:12.5,outline:"none",boxSizing:"border-box",fontFamily:"inherit",background:"#fff"};
+function Inp({label,value,onChange,placeholder,type="text",required,min,max}){return(<div style={{marginBottom:10}}><label style={{display:"block",fontSize:10.5,fontWeight:600,color:"#555",marginBottom:2,textTransform:"uppercase",letterSpacing:0.4}}>{label}{required&&<span style={{color:"#e53e3e"}}> *</span>}</label><input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} min={min} max={max} onKeyDown={type==="number"?e=>{if(["e","E","+","-","."].includes(e.key))e.preventDefault();}:undefined} style={IB}/></div>);}
+function MPick({label,value,onChange}){return(<div style={{marginBottom:10}}><label style={{display:"block",fontSize:10.5,fontWeight:600,color:"#555",marginBottom:2,textTransform:"uppercase",letterSpacing:0.4}}>{label}</label><input type="month" value={value} onChange={e=>onChange(e.target.value)} style={{...IB,colorScheme:"light"}}/></div>);}
+function LInp({label,value,onChange,placeholder}){const u=http(value);return(<div style={{marginBottom:10}}><label style={{display:"block",fontSize:10.5,fontWeight:600,color:"#555",marginBottom:2,textTransform:"uppercase",letterSpacing:0.4}}>{label}</label><div style={{display:"flex",gap:5,alignItems:"center"}}><input type="url" value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{...IB,flex:1}}/>{value&&<a href={u} target="_blank" rel="noopener noreferrer" style={{flexShrink:0,padding:"5px 10px",background:"#e3f2fd",color:"#1565c0",borderRadius:5,fontSize:11,fontWeight:600,textDecoration:"none",border:"1px solid #90caf9"}}>Open</a>}</div></div>);}
+function TA({label,value,onChange,placeholder,rows=3}){return(<div style={{marginBottom:10}}><label style={{display:"block",fontSize:10.5,fontWeight:600,color:"#555",marginBottom:2,textTransform:"uppercase",letterSpacing:0.4}}>{label}</label><textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={rows} style={{...IB,resize:"vertical"}}/></div>);}
+function Card({title,color,children,onAdd,addLabel}){return(<div style={{marginBottom:14,border:"1px solid "+color+"28",borderRadius:7,overflow:"hidden"}}><div style={{background:color,padding:"7px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{color:"#fff",fontWeight:700,fontSize:12.5}}>{title}</span>{onAdd&&<button onClick={onAdd} style={{background:"#ffffff25",border:"none",color:"#fff",padding:"2px 9px",borderRadius:4,cursor:"pointer",fontSize:11.5}}>{"+ "+(addLabel||"Add")}</button>}</div><div style={{padding:"12px 14px"}}>{children}</div></div>);}
+function KwPanel({jobTitle,skills,color,jdKws,onInsert}){
+  const rk=getKW(jobTitle,skills);const jdSet=new Set((jdKws||[]).map(k=>k.toLowerCase()));const extra=rk.filter(k=>!jdSet.has(k.toLowerCase()));const hasJd=jdKws&&jdKws.length>0;
+  if(!jobTitle&&!hasJd)return null;
+  return(<div style={{background:color+"09",border:"1px solid "+color+"30",borderRadius:7,padding:"9px 11px",marginBottom:10}}>
+    {hasJd&&<div><div style={{fontSize:10.5,fontWeight:700,color,marginBottom:6,display:"flex",alignItems:"center",gap:6}}><span style={{background:color,color:"#fff",fontSize:9,padding:"2px 7px",borderRadius:10,fontWeight:700}}>FROM JOB DESC</span><span>Click to insert:</span></div><div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>{jdKws.map((kw,i)=><button key={"j"+i} onClick={()=>onInsert(kw)} style={{background:color,border:"none",color:"#fff",padding:"3px 9px",borderRadius:20,fontSize:10.5,fontWeight:600,cursor:"pointer"}}>{kw}</button>)}</div><div style={{borderTop:"1px dashed "+color+"30",margin:"6px 0"}}/></div>}
+    {(hasJd?extra:rk).length>0&&<div><div style={{fontSize:10.5,fontWeight:700,color,marginBottom:6}}>{hasJd?"Additional role keywords:":"ATS keywords:"}</div><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{(hasJd?extra:rk).slice(0,16).map((kw,i)=><button key={"r"+i} onClick={()=>onInsert(kw)} style={{background:"#fff",border:"1px solid "+color+"50",color,padding:"3px 9px",borderRadius:20,fontSize:10.5,fontWeight:600,cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background=color;e.currentTarget.style.color="#fff";}} onMouseLeave={e=>{e.currentTarget.style.background="#fff";e.currentTarget.style.color=color;}}>{kw}</button>)}</div></div>}
+    <div style={{fontSize:9.5,color:"#888",marginTop:6}}>Keywords in bullets are auto-bolded in the resume</div>
+  </div>);
+}
+const DUMMY={firstName:"Alexandra",lastName:"Morrison",jobTitle:"Senior Software Engineer",email:"alex@email.com",phone:"(415) 555-0192",location:"San Francisco, CA",linkedin:"linkedin.com/in/alex",github:"github.com/alex",website:"alexmorrison.dev",summary:"Results-driven engineer with 8+ years delivering scalable cloud solutions.",experience:[{id:"d1",title:"Senior Software Engineer",company:"TechCorp Inc.",startDate:"2021-03",endDate:"",current:true,location:"San Francisco, CA",bullets:"- Architected microservices platform reducing latency by 40%\n- Led team of 8 engineers deploying CI/CD pipeline"},{id:"d2",title:"Software Engineer",company:"StartupXYZ",startDate:"2018-06",endDate:"2021-02",current:false,location:"New York, NY",bullets:"- Built REST API serving 1M+ daily active users"}],education:[{id:"e1",school:"UC Berkeley",degree:"B.S.",field:"Computer Science",gpa:"3.8",startDate:"2012-09",endDate:"2016-05",honors:"Magna Cum Laude"}],skills:{frontend:"React, TypeScript, Vue",backend:"Node.js, Python, FastAPI",cloud:"AWS, Docker, Kubernetes",database:"PostgreSQL, MongoDB, Redis",tools:"Git, JIRA, Jenkins",other:"Agile, Scrum, Machine Learning"},certifications:[{id:"c1",name:"AWS Solutions Architect",issuer:"Amazon Web Services",date:"2022-04",expiry:"2025-04"}],projects:[{id:"p1",name:"CloudDeploy",tech:"React, Node.js, AWS",description:"Open-source deployment tool with 2K+ GitHub stars.",url:"github.com/alex/clouddeploy"}],publications:[{id:"b1",title:"Scalable Microservices in Production",journal:"IEEE Software",year:"2022",authors:"Morrison, A."}],awards:"Engineer of the Year 2023",languages:"English (Native), Spanish (Fluent)",volunteer:"",citizenship:"U.S. Citizen",securityClearance:"",federalGrade:"",photoPreview:null};
+function TemplatePreview({tpl}){
+  const SCALE=0.28,W=720,PH=900;
+  const pd={...DUMMY};
+  if(!tpl.p)pd.photoPreview=null;
+  else pd.photoPreview="data:image/svg+xml;utf8,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90"><rect width="90" height="90" fill="'+tpl.c+'22"/><circle cx="45" cy="33" r="18" fill="'+tpl.c+'cc"/><ellipse cx="45" cy="75" rx="27" ry="20" fill="'+tpl.c+'cc"/><text x="45" y="39" font-family="Arial" font-size="18" fill="white" text-anchor="middle" font-weight="bold">A</text></svg>');
+  let rawHTML="";try{rawHTML=buildHTML(tpl,pd);}catch(e){}
+  return(<div style={{width:"100%",height:Math.round(PH*SCALE),overflow:"hidden",position:"relative",background:"#fff",borderRadius:"8px 8px 0 0",boxShadow:"inset 0 -3px 8px rgba(0,0,0,0.06)"}}><div style={{position:"absolute",top:0,left:0,width:W+"px",height:PH+"px",transform:"scale("+SCALE+")",transformOrigin:"top left",pointerEvents:"none",background:"#fff"}}><div dangerouslySetInnerHTML={{__html:rawHTML}}/></div><div style={{position:"absolute",top:6,right:7,background:tpl.c+"cc",color:"#fff",fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20}}>{"#"+tpl.id}</div><div style={{position:"absolute",bottom:6,left:7,background:"rgba(0,0,0,0.45)",color:"#fff",fontSize:8.5,fontWeight:600,padding:"2px 7px",borderRadius:20}}>{tpl.p?"Photo-Left":tpl.al==="center"?"Centered":"Left"}</div></div>);
+}
+const LADS=[{title:"Resume Review",sub:"Expert feedback",bg:"linear-gradient(135deg,#667eea,#764ba2)",cta:"Try Free"},{title:"LinkedIn Learning",sub:"Boost career skills",bg:"linear-gradient(135deg,#4facfe,#00f2fe)",cta:"Start"},{title:"Career Coaching",sub:"1-on-1 sessions",bg:"linear-gradient(135deg,#f7971e,#ffd200)",cta:"Book"},{title:"LinkedIn Premium",sub:"Stand out",bg:"linear-gradient(135deg,#0077b5,#00a0dc)",cta:"Try Free"},{title:"Cover Letter AI",sub:"Auto-generated",bg:"linear-gradient(135deg,#43e97b,#38f9d7)",cta:"Generate"}];
+const RADS=[{title:"Job Boards",sub:"1000+ remote jobs",bg:"linear-gradient(135deg,#f093fb,#f5576c)",cta:"Browse"},{title:"Certifications",sub:"Top courses",bg:"linear-gradient(135deg,#fa709a,#fee140)",cta:"Explore"},{title:"ATS Scanner",sub:"Check your score",bg:"linear-gradient(135deg,#30cfd0,#330867)",cta:"Scan"},{title:"Interview Prep",sub:"Land your dream job",bg:"linear-gradient(135deg,#a18cd1,#fbc2eb)",cta:"Practice"},{title:"Salary Insights",sub:"Know your value",bg:"linear-gradient(135deg,#fddb92,#d1fdff)",cta:"Check"}];
+function AdSidebar({side}){
+  const w=typeof window!=="undefined"?window.innerWidth:1024;
+  const isMob=w<768;const ads=side==="left"?LADS:RADS;const sw=w>=1024?155:125;
+  if(isMob&&side==="left")return null;
+  if(isMob&&side==="right")return(<span><style>{`.adms{position:fixed;bottom:0;left:0;right:0;z-index:99;background:#fff;border-top:2px solid #e8eaed;padding:5px 8px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}.adms::-webkit-scrollbar{display:none}.admc{flex-shrink:0;width:110px;border-radius:7px;overflow:hidden;text-decoration:none}.adpb{height:70px}`}</style><div className="adpb"/><div className="adms">{ads.map((a,i)=><a key={i} href="#" className="admc"><div style={{background:a.bg,padding:"7px 6px",textAlign:"center"}}><div style={{fontSize:11,fontWeight:800,color:"#fff"}}>{a.title}</div><div style={{fontSize:8,color:"#ffffffdd",margin:"2px 0 4px"}}>{a.sub}</div><div style={{display:"inline-block",background:"rgba(255,255,255,.28)",color:"#fff",fontSize:8.5,fontWeight:700,padding:"2px 8px",borderRadius:20}}>{a.cta}</div></div></a>)}</div></span>);
+  return(<div style={{width:sw,flexShrink:0,display:"flex",flexDirection:"column",gap:8,padding:"12px 7px",background:"#f8f9fa",[side==="left"?"borderRight":"borderLeft"]:"1px solid #e8eaed",overflowY:"auto"}}><div style={{fontSize:8.5,fontWeight:700,color:"#bbb",letterSpacing:1,textTransform:"uppercase",textAlign:"center",paddingBottom:4,borderBottom:"1px dashed #e8eaed"}}>Sponsored</div>{ads.map((a,i)=><a key={i} href="#" style={{display:"block",borderRadius:8,overflow:"hidden",textDecoration:"none",boxShadow:"0 2px 7px rgba(0,0,0,0.07)"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.transform="";}}><div style={{background:a.bg,padding:"10px 9px",textAlign:"center"}}><div style={{fontSize:12,fontWeight:800,color:"#fff",lineHeight:1.3}}>{a.title}</div><div style={{fontSize:9,color:"#ffffffdd",marginTop:2,marginBottom:6}}>{a.sub}</div><div style={{display:"inline-block",background:"rgba(255,255,255,.25)",color:"#fff",fontSize:9.5,fontWeight:700,padding:"2px 9px",borderRadius:20,border:"1px solid rgba(255,255,255,.5)"}}>{a.cta}</div></div></a>)}</div>);
+}
+function JDStep({tpl,onBack,onContinue}){
+  const[url,setUrl]=useState("");const[txt,setTxt]=useState("");const[mode,setMode]=useState("url");const[loading,setLoading]=useState(false);const[status,setStatus]=useState("");const[err,setErr]=useState("");const[result,setResult]=useState(null);const[usedAI,setUsedAI]=useState(false);
+  const ac=tpl.c==="#1a1a1a"?"#888":tpl.c;
+  async function callAI(opts){
+    const isUrl=!!opts.jobUrl;
+    const prompt=isUrl?"You are a resume expert. Analyse this job posting URL: "+opts.jobUrl+"\nReturn ONLY valid JSON no markdown: {\"jobTitle\":\"\",\"company\":\"\",\"experienceYears\":\"\",\"experienceLevel\":\"\",\"techStack\":[],\"softSkills\":[],\"keywords\":[],\"requirements\":[],\"niceToHave\":[],\"salaryRange\":\"\",\"workMode\":\"\",\"summary\":\"\"}":"You are a resume expert. Analyse this job description. Return ONLY valid JSON no markdown: {\"jobTitle\":\"\",\"company\":\"\",\"experienceYears\":\"\",\"experienceLevel\":\"\",\"techStack\":[],\"softSkills\":[],\"keywords\":[],\"requirements\":[],\"niceToHave\":[],\"salaryRange\":\"\",\"workMode\":\"\",\"summary\":\"\"}\n\nJOB:\n\"\"\""+"\n"+(opts.jobText||"").slice(0,8000)+"\n\"\"\"";
+    const res=await fetch("https://integrate.api.nvidia.com/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+NVIDIA_KEY},body:JSON.stringify({model:"meta/llama-3.1-8b-instruct",messages:[{role:"user",content:prompt}],temperature:0.1,max_tokens:1600})});
+    if(!res.ok){const t=await res.text().catch(()=>"{}");let m="Error";try{m=JSON.parse(t)?.message||t.slice(0,150);}catch(e){}throw new Error("NVIDIA "+res.status+": "+m);}
+    const data=await res.json();const raw=(data.choices?.[0]?.message?.content||"").replace(/```json|```/gi,"").trim();const match=raw.match(/\{[\s\S]*\}/);if(!match)throw new Error("No JSON from NVIDIA");return JSON.parse(match[0]);
+  }
+  async function doUrl(){
+    const tr=url.trim();if(!tr){setErr("Please enter a URL.");return;}
+    const fu=/^https?:\/\//i.test(tr)?tr:"https://"+tr;
+    setLoading(true);setErr("");
+    if(HAS_KEY){setStatus("Sending URL to NVIDIA AI...");try{setResult(await callAI({jobUrl:fu}));setUsedAI(true);}catch(e){setErr(e.message);}
+    }else{setStatus("Fetching job page...");try{const t=await fetchPage(fu);if(t&&t.length>100){setStatus("Analysing job description...");await new Promise(r=>setTimeout(r,300));const r=localAnalyse(t);if(r){setResult(r);setUsedAI(false);}else{setMode("paste");setErr("Fetched the page but could not extract job details. Please switch to Paste Text and paste the job description manually.");}}else{setMode("paste");setErr("Could not fetch this page automatically — most job portals (LinkedIn, Naukri, Indeed) block bots.\n\nSwitch to Paste Text: open the job URL → select all (Ctrl+A) → copy (Ctrl+C) → paste below.");}}catch(e){setMode("paste");setErr("Fetch failed. Please switch to Paste Text and paste the job description manually.");}}
+    setStatus("");setLoading(false);
+  }
+  async function doPaste(){
+    const tr=txt.trim();if(!tr||tr.length<80){setErr("Please paste at least a few sentences.");return;}
+    setLoading(true);setErr("");
+    if(HAS_KEY){setStatus("Sending to NVIDIA AI...");try{setResult(await callAI({jobText:tr}));setUsedAI(true);}catch(e){setErr(e.message);}
+    }else{setStatus("Analysing...");await new Promise(r=>setTimeout(r,500));const r=localAnalyse(tr);if(r){setResult(r);setUsedAI(false);}else setErr("Could not extract details. Please check the pasted text.");}
+    setStatus("");setLoading(false);
+  }
+  const btnStyle=(active)=>({flex:1,padding:"9px 0",borderRadius:8,fontWeight:700,fontSize:13,cursor:"pointer",border:"2px solid "+(active?tpl.c:"#ffffff22"),background:active?tpl.c+"25":"transparent",color:active?tpl.c:"#ffffffaa"});
+  return(
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f0c29,#302b63,#24243e)",fontFamily:"'Segoe UI',sans-serif",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"28px 14px"}}>
+      <div style={{width:"100%",maxWidth:700}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+          <button onClick={onBack} style={{background:"#ffffff15",border:"1px solid #ffffff30",color:"#fff",padding:"7px 14px",borderRadius:8,cursor:"pointer",fontSize:13}}>Back</button>
+          <div><div style={{color:"#ffffffaa",fontSize:10.5}}>Step 1 of 2</div><div style={{color:"#fff",fontWeight:700,fontSize:15}}>{tpl.n}</div></div>
+          <span style={{marginLeft:"auto",fontSize:10.5,fontWeight:700,padding:"4px 11px",borderRadius:20,background:HAS_KEY?"#76b900":"#ffffff12",color:HAS_KEY?"#76b900":"#ffffffaa",border:"1px solid "+(HAS_KEY?"#76b90040":"#ffffff22")}}>{HAS_KEY?"NVIDIA AI":"Built-in"}</span>
+        </div>
+        <div style={{background:"#ffffff0d",border:"1px solid #ffffff18",borderRadius:14,overflow:"hidden"}}>
+          <div style={{background:tpl.c,padding:"14px 20px"}}><h2 style={{color:"#fff",margin:0,fontSize:17,fontWeight:800}}>Analyse Job Description</h2><p style={{color:"#ffffffcc",margin:"4px 0 0",fontSize:12.5}}>{HAS_KEY?"NVIDIA AI reads the URL or text and extracts all job details.":"Paste URL or text - built-in analyser extracts requirements and keywords."}</p></div>
+          <div style={{padding:"20px"}}>
+            {!result&&<div style={{display:"flex",gap:8,marginBottom:16}}><button onClick={()=>{setMode("url");setErr("");}} style={btnStyle(mode==="url")}>Job URL</button><button onClick={()=>{setMode("paste");setErr("");}} style={btnStyle(mode==="paste")}>Paste Text</button></div>}
+            {!result&&mode==="url"&&<div><label style={{display:"block",color:"#ffffffcc",fontSize:11,fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Job Posting URL</label><div style={{display:"flex",gap:8}}><input value={url} onChange={e=>{setUrl(e.target.value);setErr("");}} disabled={loading} placeholder="https://linkedin.com/jobs/view/..." onKeyDown={e=>{if(e.key==="Enter"&&!loading)doUrl();}} style={{flex:1,padding:"10px 13px",borderRadius:8,border:"1px solid #ffffff30",background:"#ffffff12",color:"#fff",fontSize:13,outline:"none",fontFamily:"inherit"}}/><button onClick={doUrl} disabled={loading||!url.trim()} style={{padding:"10px 18px",background:loading||!url.trim()?"#555":tpl.c,color:"#fff",border:"none",borderRadius:8,fontWeight:700,fontSize:13,cursor:loading||!url.trim()?"not-allowed":"pointer",whiteSpace:"nowrap"}}>{loading?"...":"Analyse"}</button></div><div style={{color:"#ffffff38",fontSize:11,marginTop:7}}>{HAS_KEY?"NVIDIA AI visits the URL server-side.":"Uses a CORS proxy. If blocked, switch to Paste Text."} <button onClick={()=>setMode("paste")} style={{background:"none",border:"none",color:tpl.c,fontSize:11,fontWeight:700,cursor:"pointer",padding:0,textDecoration:"underline"}}>Switch to Paste</button></div></div>}
+            {!result&&mode==="paste"&&<div><label style={{display:"block",color:"#ffffffcc",fontSize:11,fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Paste Full Job Description</label><textarea value={txt} onChange={e=>{setTxt(e.target.value);setErr("");}} disabled={loading} rows={10} placeholder="Paste the full job description here..." style={{width:"100%",padding:"11px 13px",borderRadius:8,border:"1px solid #ffffff30",background:"#ffffff12",color:"#fff",fontSize:12.5,outline:"none",resize:"vertical",fontFamily:"inherit",boxSizing:"border-box"}}/><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"5px 0 10px"}}><span style={{color:txt.length>200?"#4ade80":"#ffffff50",fontSize:11}}>{txt.length+" chars "+(txt.length>200?"ready":"(paste more)")}</span>{txt.length>0&&<button onClick={()=>{setTxt("");setErr("");}} style={{background:"none",border:"none",color:"#ff8a80",fontSize:11,cursor:"pointer"}}>Clear</button>}</div><button onClick={doPaste} disabled={loading||txt.trim().length<80} style={{width:"100%",padding:"12px 0",background:loading||txt.trim().length<80?"#555":"linear-gradient(90deg,"+tpl.c+","+tpl.a+")",color:"#fff",border:"none",borderRadius:8,fontWeight:800,fontSize:14,cursor:loading||txt.trim().length<80?"not-allowed":"pointer"}}>{loading?"Analysing...":"Analyse Job Description"}</button></div>}
+            {loading&&status&&<div style={{display:"flex",alignItems:"center",gap:10,marginTop:14,color:"#ffffffaa",fontSize:13}}><span>...</span><span>{status}</span></div>}
+            {err&&!loading&&<div style={{marginTop:12,padding:"12px 14px",background:"rgba(255,0,0,0.1)",border:"1px solid rgba(255,0,0,0.3)",borderRadius:8}}><div style={{color:"#ff8a80",fontWeight:700,marginBottom:6,fontSize:12.5}}>Could not load URL</div><div style={{color:"#ffcccc",fontSize:12,lineHeight:1.6}}>{err}</div></div>}
+            {result&&!loading&&<div>
+              <div style={{marginBottom:10}}><span style={{fontSize:10.5,fontWeight:700,padding:"3px 10px",borderRadius:20,background:usedAI?"#76b90022":"rgba(255,255,255,0.08)",color:usedAI?"#76b900":"#ffffffaa"}}>{usedAI?"Analysed by NVIDIA AI":"Analysed by built-in engine"}</span></div>
+              <div style={{background:tpl.c+"20",border:"1px solid "+tpl.c+"50",borderRadius:10,padding:"13px 15px",marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:6}}><div><div style={{color:"#fff",fontWeight:800,fontSize:16}}>{result.jobTitle||"Role"}</div>{result.company&&<div style={{color:"#ffffffaa",fontSize:12,marginTop:2}}>{"@ "+result.company}</div>}</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{result.workMode&&<span style={{background:"rgba(255,255,255,0.13)",color:"#fff",fontSize:10.5,padding:"3px 9px",borderRadius:20,fontWeight:600}}>{result.workMode}</span>}{result.salaryRange&&<span style={{background:"rgba(0,200,83,0.13)",color:"#4ade80",fontSize:10.5,padding:"3px 9px",borderRadius:20,fontWeight:600}}>{result.salaryRange}</span>}</div></div>{result.summary&&<div style={{color:"#ffffffcc",fontSize:12,lineHeight:1.55}}>{result.summary}</div>}</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:14}}>
+                <div style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"11px 13px"}}><div style={{color:"#ffffffaa",fontSize:9.5,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,marginBottom:4}}>Experience Required</div><div style={{color:"#fff",fontWeight:800,fontSize:17}}>{result.experienceYears||"Not specified"}</div>{result.experienceLevel&&<div style={{color:ac,fontSize:11.5,marginTop:2,fontWeight:600}}>{result.experienceLevel}</div>}</div>
+                <div style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"11px 13px"}}><div style={{color:"#ffffffaa",fontSize:9.5,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,marginBottom:6}}>Required Tech Stack</div><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{(result.techStack||[]).length>0?(result.techStack||[]).map((t,i)=><span key={i} style={{background:tpl.c,color:"#fff",fontSize:10.5,fontWeight:600,padding:"2px 9px",borderRadius:20}}>{t}</span>):<span style={{color:"#ffffffaa",fontSize:11}}>None specified</span>}</div>{(result.niceToHave||[]).length>0&&<div style={{marginTop:8}}><div style={{color:"#ffffffaa",fontSize:9,textTransform:"uppercase",letterSpacing:0.6,marginBottom:4}}>Nice to have</div><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{result.niceToHave.map((n,i)=><span key={i} style={{background:"rgba(255,255,255,0.1)",color:"#ffffffcc",fontSize:10,padding:"2px 8px",borderRadius:20}}>{n}</span>)}</div></div>}</div>
+              </div>
+              {(result.requirements||[]).length>0&&<div style={{marginBottom:13}}><div style={{color:"#ffffffcc",fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,marginBottom:6}}>Key Requirements</div><div style={{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"10px 13px"}}>{result.requirements.map((r,i)=><div key={i} style={{color:"#ffffffcc",fontSize:12,marginBottom:5,display:"flex",gap:8}}><span style={{color:ac,fontWeight:700,flexShrink:0}}>•</span><span>{r}</span></div>)}</div></div>}
+              {(result.keywords||[]).length>0&&<div style={{marginBottom:13}}><div style={{color:"#ffffffcc",fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,marginBottom:6}}>ATS Keywords</div><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{result.keywords.map((k,i)=><span key={i} style={{background:"rgba(255,255,255,0.08)",color:"#ffffffdd",fontSize:11,padding:"3px 9px",borderRadius:20}}>{k}</span>)}</div><div style={{color:"rgba(255,255,255,0.25)",fontSize:10.5,marginTop:5}}>These appear as clickable suggestions in bullet-point fields.</div></div>}
+              {(result.softSkills||[]).length>0&&<div style={{marginBottom:16}}><div style={{color:"#ffffffcc",fontSize:10.5,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8,marginBottom:6}}>Soft Skills</div><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{result.softSkills.map((s,i)=><span key={i} style={{background:"rgba(255,255,255,0.05)",color:"#ffffffaa",fontSize:11,padding:"3px 9px",borderRadius:20}}>{s}</span>)}</div></div>}
+              <div style={{display:"flex",gap:9,marginTop:4}}><button onClick={()=>{setResult(null);setUrl("");setTxt("");setErr("");}} style={{flex:1,padding:"11px 0",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.17)",color:"#fff",borderRadius:8,fontWeight:700,fontSize:13,cursor:"pointer"}}>Try Again</button><button onClick={()=>onContinue(result)} style={{flex:2,padding:"11px 0",background:"linear-gradient(90deg,"+tpl.c+","+tpl.a+")",color:"#fff",border:"none",borderRadius:8,fontWeight:800,fontSize:14,cursor:"pointer"}}>Continue Building Resume</button></div>
+              <div style={{textAlign:"center",marginTop:10}}><button onClick={()=>onContinue(null)} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.25)",color:"#ffffffcc",fontSize:12,fontWeight:600,cursor:"pointer",padding:"8px 22px",borderRadius:8}}>Skip — continue without JD</button></div>
+            </div>}
+            {!result&&!loading&&<div style={{textAlign:"center",marginTop:14}}><button onClick={()=>onContinue(null)} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.25)",color:"#ffffffcc",fontSize:12,fontWeight:600,cursor:"pointer",padding:"8px 22px",borderRadius:8}}>Skip — build without job description analysis</button></div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function BulletEditor({color,bullets,onChange,isFresher}){
+  const lines=(bullets||"").split("\n").map(l=>l.replace(/^[-*]\s*/,"").trim()).filter(Boolean);
+  const[editing,setEditing]=useState(null); // index being edited
+  const[editVal,setEditVal]=useState("");
+  const[newLine,setNewLine]=useState("");
+
+  function commit(i,val){
+    const updated=[...lines];
+    if(val.trim())updated[i]=val.trim();
+    else updated.splice(i,1);
+    onChange(updated.map(l=>"- "+l).join("\n"));
+    setEditing(null);setEditVal("");
+  }
+  function deleteLine(i){const updated=[...lines];updated.splice(i,1);onChange(updated.map(l=>"- "+l).join("\n"));}
+  function addLine(){const t=newLine.trim();if(!t)return;onChange([...lines,t].map(l=>"- "+l).join("\n"));setNewLine("");}
+
+  // Render line with **bold** markers highlighted
+  function renderPreview(text){
+    return text.replace(/\*\*([^*]+)\*\*/g,'<strong style="color:'+color+';">$1</strong>');
+  }
+
+  const ph=isFresher?"e.g. Assisted in developing React components as part of agile team":"e.g. Led migration to microservices reducing latency by 40%";
+
+  return(
+    <div style={{marginBottom:10}}>
+      <label style={{display:"block",fontSize:10.5,fontWeight:600,color:"#555",marginBottom:6,textTransform:"uppercase",letterSpacing:0.4}}>
+        Key Responsibilities &amp; Achievements
+      </label>
+      <div style={{border:"1px solid #ddd",borderRadius:7,overflow:"hidden",background:"#fff"}}>
+        {lines.length===0&&<div style={{padding:"12px 14px",color:"#aaa",fontSize:12,fontStyle:"italic"}}>No bullet points yet. Add your first one below.</div>}
+        {lines.map((line,i)=>(
+          <div key={i} style={{borderBottom:"1px solid #f0f0f0",padding:"8px 12px",display:"flex",alignItems:"flex-start",gap:8,background:editing===i?"#f8f9ff":"#fff"}}>
+            <span style={{color:color,fontWeight:700,fontSize:14,flexShrink:0,marginTop:1}}>•</span>
+            {editing===i?(
+              <div style={{flex:1,display:"flex",gap:6,alignItems:"flex-start"}}>
+                <textarea value={editVal} onChange={e=>setEditVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();commit(i,editVal);}if(e.key==="Escape"){setEditing(null);setEditVal("");}}}
+                  style={{flex:1,padding:"4px 8px",border:"1px solid "+color+"60",borderRadius:5,fontSize:12,resize:"vertical",fontFamily:"inherit",outline:"none",minHeight:36,lineHeight:1.5}} autoFocus rows={2}/>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  <button onClick={()=>commit(i,editVal)} style={{background:color,color:"#fff",border:"none",padding:"3px 9px",borderRadius:4,cursor:"pointer",fontSize:11,fontWeight:600}}>Save</button>
+                  <button onClick={()=>{setEditing(null);setEditVal("");}} style={{background:"#f0f0f0",color:"#555",border:"none",padding:"3px 9px",borderRadius:4,cursor:"pointer",fontSize:11}}>Cancel</button>
+                </div>
+              </div>
+            ):(
+              <>
+                <div style={{flex:1,fontSize:12,lineHeight:1.55,color:"#333"}} dangerouslySetInnerHTML={{__html:renderPreview(line)}}/>
+                <div style={{display:"flex",gap:5,flexShrink:0,marginTop:1}}>
+                  <button onClick={()=>{setEditing(i);setEditVal(line);}} style={{background:"#e3f2fd",color:"#1565c0",border:"none",padding:"2px 8px",borderRadius:4,cursor:"pointer",fontSize:10.5,fontWeight:600}}>Edit</button>
+                  <button onClick={()=>deleteLine(i)} style={{background:"#ffeaea",color:"#e53e3e",border:"none",padding:"2px 8px",borderRadius:4,cursor:"pointer",fontSize:10.5,fontWeight:600}}>Delete</button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+        <div style={{padding:"8px 12px",borderTop:lines.length?"1px solid #f0f0f0":"none",background:"#fafafa",display:"flex",gap:8,alignItems:"flex-start"}}>
+          <span style={{color:"#aaa",fontWeight:700,fontSize:14,flexShrink:0,marginTop:6}}>+</span>
+          <textarea value={newLine} onChange={e=>setNewLine(e.target.value)} placeholder={ph}
+            onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();addLine();}}}
+            style={{flex:1,padding:"5px 9px",border:"1px solid #e0e0e0",borderRadius:5,fontSize:12,resize:"none",fontFamily:"inherit",outline:"none",background:"#fff",lineHeight:1.5}} rows={2}/>
+          <button onClick={addLine} disabled={!newLine.trim()} style={{background:newLine.trim()?color:"#ccc",color:"#fff",border:"none",padding:"6px 12px",borderRadius:5,cursor:newLine.trim()?"pointer":"not-allowed",fontSize:11,fontWeight:700,flexShrink:0,marginTop:2}}>Add</button>
+        </div>
+      </div>
+      <div style={{fontSize:9.5,color:"#888",marginTop:4}}>Press Enter to quickly add a bullet. Click Edit to modify any line.</div>
+    </div>
+  );
+}
+
+function App(){
+  const[step,setStep]=useState("gallery");const[tpl,setTpl]=useState(null);const[form,setForm]=useState(EF);const[html,setHtml]=useState("");const[busy,setBusy]=useState(false);const[jdData,setJdData]=useState(null);const[profileType,setProfileType]=useState(null);const jdApplied=useRef(false);
+
+  // Generate smart bullet points from JD keywords based on fresher vs experienced
+  function generateBullets(kws,jobTitle,isFresher){
+    if(!kws||!kws.length)return"";
+    const tech=kws.filter(k=>k.length>2).slice(0,6);
+    if(isFresher){
+      // Contributor style — assisted, supported, collaborated
+      const lines=[
+        tech[0]?`- Assisted in developing features using ${tech[0]} as part of a cross-functional team`:"",
+        tech[1]?`- Collaborated with senior developers to implement ${tech[1]} solutions`:"",
+        tech[2]?`- Contributed to testing and debugging using ${tech[2]} methodologies`:"",
+        tech[3]?`- Supported team in building and maintaining ${tech[3]} components`:"",
+        `- Participated in daily standups and agile sprint planning sessions`,
+        `- Documented technical specifications and assisted in code reviews`,
+      ].filter(Boolean);
+      return lines.join("\n");
+    }else{
+      // Ownership style — led, drove, architected
+      const lines=[
+        tech[0]?`- Led design and implementation of ${tech[0]} solutions delivering measurable business impact`:"",
+        tech[1]?`- Architected scalable ${tech[1]} systems improving performance by 40%`:"",
+        tech[2]?`- Drove adoption of ${tech[2]} across the team, reducing delivery time by 30%`:"",
+        tech[3]?`- Owned end-to-end development of ${tech[3]} features from requirements to deployment`:"",
+        `- Mentored junior engineers and conducted code reviews to maintain quality standards`,
+        `- Collaborated with stakeholders to align technical decisions with business objectives`,
+      ].filter(Boolean);
+      return lines.join("\n");
+    }
+  }
+
+  useEffect(()=>{
+    if(step!=="form"){jdApplied.current=false;return;}
+    if(!jdData||jdApplied.current||!profileType)return;
+    jdApplied.current=true;
+    const isFresher=profileType==="fresher";
+    const bullets=generateBullets(jdData.keywords,jdData.jobTitle,isFresher);
+    setForm(prev=>({
+      ...prev,
+      skills:{...prev.skills,other:jdData.techStack&&jdData.techStack.length?jdData.techStack.join(", ").slice(0,150):prev.skills.other},
+      experience:prev.experience.map((exp,i)=>i===0?{...exp,bullets}:exp),
+    }));
+  },[step,jdData,profileType]);
+  const setF=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const setSk=(k,v)=>setForm(p=>({...p,skills:{...p.skills,[k]:v}}));
+  const setN=(f,i,k,v)=>setForm(p=>{const a=[...p[f]];a[i]={...a[i],[k]:v};return{...p,[f]:a};});
+  const addI=(f,empty)=>setForm(p=>({...p,[f]:[...p[f],{...empty,id:uid()}]}));
+  const delI=(f,i)=>setForm(p=>({...p,[f]:p[f].filter((_,j)=>j!==i)}));
+  const handlePhoto=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>setF("photoPreview",ev.target.result);r.readAsDataURL(file);};
+  const insertKw=(kw,idx)=>{const lines=form.experience[idx].bullets.split("\n");if(lines.length&&lines[lines.length-1].trim()==="")lines[lines.length-1]="- "+kw;else lines.push("- "+kw);setN("experience",idx,"bullets",lines.join("\n"));};
+  const preview=()=>{setHtml(buildHTML(tpl,form));setStep("preview");};
+  const[galleryGroup,setGalleryGroup]=useState(null);
+  if(step==="gallery"){
+    const groupTemplates=galleryGroup?T.filter(t=>t.g===galleryGroup):null;
+    return(
+      <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f0c29,#302b63,#24243e)",fontFamily:"'Segoe UI',sans-serif",padding:"24px 14px"}}>
+        <div style={{maxWidth:1100,margin:"0 auto"}}>
+          <div style={{textAlign:"center",marginBottom:24}}>
+            <div style={{display:"inline-block",background:"linear-gradient(90deg,#f6d365,#fda085)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontSize:11.5,fontWeight:700,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>ATS-OPTIMIZED</div>
+            <h1 style={{color:"#fff",fontSize:30,fontWeight:800,margin:"0 0 7px"}}>Resume Builder</h1>
+            <p style={{color:"#ffffffaa",fontSize:13,margin:0}}>25 templates · AI job description analysis · Keyword suggestions · Download Word or PDF</p>
+          </div>
+
+          {!galleryGroup ? (
+            /* ── CATEGORY GRID ── */
+            <div>
+              <p style={{color:"#ffffffcc",textAlign:"center",fontSize:13,marginBottom:18}}>Choose your field to see matching templates:</p>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:14}}>
+                {GALLERY_GROUPS.map(g=>(
+                  <button key={g.key} onClick={()=>setGalleryGroup(g.key)}
+                    style={{background:"rgba(255,255,255,0.06)",border:"2px solid rgba(255,255,255,0.12)",borderRadius:14,padding:"22px 16px",cursor:"pointer",textAlign:"center",transition:"all .2s",color:"#fff"}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor=g.color;e.currentTarget.style.background=g.color+"30";e.currentTarget.style.transform="translateY(-3px)";}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";e.currentTarget.style.background="rgba(255,255,255,0.06)";e.currentTarget.style.transform="";}}>
+                    <div style={{fontSize:32,marginBottom:8}}>{g.label.split(" ")[0]}</div>
+                    <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{g.label.slice(g.label.indexOf(" ")+1)}</div>
+                    <div style={{color:"#ffffffaa",fontSize:11,marginBottom:10}}>{g.desc}</div>
+                    <div style={{background:g.color+"30",border:"1px solid "+g.color+"60",borderRadius:20,padding:"3px 10px",fontSize:10.5,color:g.color,fontWeight:700,display:"inline-block"}}>
+                      {T.filter(t=>t.g===g.key).length} templates
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            /* ── TEMPLATE GRID for selected group ── */
+            <div>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
+                <button onClick={()=>setGalleryGroup(null)}
+                  style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.25)",color:"#fff",padding:"6px 14px",borderRadius:8,cursor:"pointer",fontSize:13}}>
+                  ← All Categories
+                </button>
+                <div>
+                  <div style={{color:"#ffffffaa",fontSize:11}}>Showing templates for</div>
+                  <div style={{color:"#fff",fontWeight:700,fontSize:16}}>{GALLERY_GROUPS.find(g=>g.key===galleryGroup)?.label}</div>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:14}}>
+                {groupTemplates.map(t=>(
+                  <div key={t.id} onClick={()=>{setTpl(t);setForm(EF);setJdData(null);setStep("jd");}} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:12,overflow:"hidden",cursor:"pointer",transition:"all .22s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow="0 16px 36px "+t.c+"60";e.currentTarget.style.borderColor=t.c;}} onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";e.currentTarget.style.borderColor="rgba(255,255,255,0.09)";}}>
+                    <TemplatePreview tpl={t}/>
+                    <div style={{padding:"9px 12px"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:2}}>
+                        <h3 style={{color:"#fff",fontSize:12.5,fontWeight:700,margin:0,lineHeight:1.3}}>{t.n}</h3>
+                        <span style={{background:t.c+"28",color:t.c==="#1a1a1a"?"#aaa":t.c,fontSize:8,fontWeight:600,padding:"1px 7px",borderRadius:20,marginLeft:4,border:"1px solid "+t.c+"35",flexShrink:0}}>ATS</span>
+                      </div>
+                      <div style={{color:"rgba(255,255,255,0.31)",fontSize:9.5,marginBottom:7}}>{t.cat}</div>
+                      <button style={{width:"100%",padding:"7px 0",background:"linear-gradient(90deg,"+t.c+","+t.a+")",color:"#fff",border:"none",borderRadius:6,fontWeight:700,fontSize:12,cursor:"pointer"}}>Use Template</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  if(step==="jd")return(<JDStep tpl={tpl} onBack={()=>setStep("gallery")} onContinue={r=>{setJdData(r);setProfileType(null);setStep("profile");}}/>);
+  if(step==="profile")return(
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f0c29,#302b63,#24243e)",fontFamily:"'Segoe UI',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",padding:"28px 14px"}}>
+      <div style={{width:"100%",maxWidth:500}}>
+        <div style={{textAlign:"center",marginBottom:28}}>
+          <div style={{fontSize:36,marginBottom:12}}>👤</div>
+          <h2 style={{color:"#fff",fontWeight:800,fontSize:22,margin:"0 0 8px"}}>What describes you best?</h2>
+          <p style={{color:"#ffffffaa",fontSize:13,margin:0}}>This helps us write your bullet points in the right voice — ownership for experienced, contributor for freshers.</p>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          {[
+            {type:"experienced",icon:"🚀",title:"Experienced",sub:"I have work experience\n(1+ years)",desc:"Bullet points written as owner — Led, Architected, Drove, Owned"},
+            {type:"fresher",icon:"🌱",title:"Fresher / Intern",sub:"I'm a recent graduate\nor student",desc:"Bullet points written as contributor — Assisted, Collaborated, Supported"},
+          ].map(opt=>(
+            <button key={opt.type} onClick={()=>{setProfileType(opt.type);setStep("form");}}
+              style={{background:"#ffffff0d",border:"2px solid #ffffff20",borderRadius:14,padding:"24px 18px",cursor:"pointer",textAlign:"center",transition:"all .2s",color:"#fff"}}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=tpl.c;e.currentTarget.style.background=tpl.c+"22";}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor="#ffffff20";e.currentTarget.style.background="#ffffff0d";}}>
+              <div style={{fontSize:36,marginBottom:10}}>{opt.icon}</div>
+              <div style={{fontWeight:800,fontSize:16,marginBottom:4}}>{opt.title}</div>
+              <div style={{color:"#ffffffaa",fontSize:11.5,marginBottom:10,whiteSpace:"pre-line"}}>{opt.sub}</div>
+              <div style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.25)",borderRadius:8,padding:"8px 10px",fontSize:10.5,color:"#fff",fontWeight:600,lineHeight:1.4}}>{opt.desc}</div>
+            </button>
+          ))}
+        </div>
+        <div style={{textAlign:"center",marginTop:16}}>
+          <button onClick={()=>{setProfileType("experienced");setStep("form");}} style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.25)",color:"#ffffffcc",fontSize:12,fontWeight:600,cursor:"pointer",padding:"8px 22px",borderRadius:8}}>Skip — I'll write my own bullet points</button>
+        </div>
+      </div>
+    </div>
+  );
+  if(step==="form"){
+    const showProj=[2,9,11,12,13,14,20].includes(tpl.id);const showPub=tpl.id===7;const showFed=tpl.id===10;
+    const RemBtn=({f,i})=>i>0?<button onClick={()=>delI(f,i)} style={{background:"none",border:"1px solid #ffaaaa",color:"#e53e3e",padding:"1px 9px",borderRadius:4,cursor:"pointer",fontSize:11}}>Remove</button>:null;
+    return(
+      <div style={{height:"100vh",background:"#f4f5f7",fontFamily:"'Segoe UI',sans-serif",display:"flex",flexDirection:"column"}}>
+        <div style={{background:tpl.c,padding:"10px 16px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 2px 10px rgba(0,0,0,0.19)",flexShrink:0}}>
+          <button onClick={()=>setStep("jd")} style={{background:"rgba(255,255,255,0.13)",border:"none",color:"#fff",padding:"5px 11px",borderRadius:5,cursor:"pointer",fontSize:12}}>Back</button>
+          <div><div style={{color:"#ffffffaa",fontSize:9.5}}>{"Template #"+tpl.id}</div><div style={{color:"#fff",fontWeight:700,fontSize:13.5}}>{tpl.n}</div></div>
+          <button onClick={preview} style={{marginLeft:"auto",background:"#fff",color:tpl.c,border:"none",padding:"7px 16px",borderRadius:7,fontWeight:700,fontSize:12.5,cursor:"pointer"}}>Preview and Download</button>
+        </div>
+        {jdData&&<div style={{background:tpl.c+"18",borderBottom:"1px solid "+tpl.c+"35",padding:"7px 16px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",flexShrink:0}}><span style={{background:tpl.c,color:"#fff",fontSize:10,fontWeight:700,padding:"3px 9px",borderRadius:20}}>JOB MATCH</span><span style={{fontSize:12,fontWeight:700,color:"#333"}}>{jdData.jobTitle||"Role"}</span>{jdData.company&&<span style={{fontSize:11.5,color:"#555"}}>{"@ "+jdData.company}</span>}{jdData.experienceYears&&<span style={{fontSize:11,background:"rgba(255,255,255,0.5)",padding:"2px 9px",borderRadius:20,color:"#333",border:"1px solid #ddd"}}>{jdData.experienceYears}</span>}<div style={{marginLeft:"auto",display:"flex",gap:6,flexWrap:"wrap"}}>{(jdData.techStack||[]).slice(0,5).map((ts,i)=><span key={i} style={{fontSize:10.5,background:tpl.c+"20",color:tpl.c,padding:"2px 8px",borderRadius:20,fontWeight:600,border:"1px solid "+tpl.c+"40"}}>{ts}</span>)}</div></div>}
+        <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+          <AdSidebar side="left"/>
+          <div style={{flex:1,overflowY:"auto",padding:"14px 12px"}}>
+            <div style={{maxWidth:660,margin:"0 auto"}}>
+              {tpl.p&&<Card title="Profile Photo" color={tpl.c}><div style={{display:"flex",alignItems:"center",gap:12}}><div style={{width:60,height:60,borderRadius:6,background:"#eee",overflow:"hidden",border:"2px solid "+tpl.c,flexShrink:0}}>{form.photoPreview?<img src={form.photoPreview} style={{width:"100%",height:"100%",objectFit:"cover"}} alt="p"/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"#ccc"}}>+</div>}</div><div><input type="file" accept="image/*" onChange={handlePhoto} id="pu" style={{display:"none"}}/><label htmlFor="pu" style={{display:"inline-block",padding:"6px 13px",background:tpl.c,color:"#fff",borderRadius:5,cursor:"pointer",fontSize:12,fontWeight:600}}>Upload Photo</label>{form.photoPreview&&<button onClick={()=>setF("photoPreview",null)} style={{marginLeft:7,background:"none",border:"1px solid #ddd",padding:"5px 9px",borderRadius:5,cursor:"pointer",fontSize:11}}>Remove</button>}</div></div></Card>}
+              <Card title="Personal Information" color={tpl.c}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 11px"}}><Inp label="First Name" value={form.firstName} onChange={v=>setF("firstName",v)} required/><Inp label="Last Name" value={form.lastName} onChange={v=>setF("lastName",v)} required/><Inp label="Email" type="email" value={form.email} onChange={v=>setF("email",v)} required/><Inp label="Phone" type="tel" value={form.phone} onChange={v=>setF("phone",v)} placeholder="+91 98765 43210"/><Inp label="Location" value={form.location} onChange={v=>setF("location",v)} placeholder="City, State"/>{profileType!=="fresher"&&<Inp label="Current Job Title" value={form.jobTitle} onChange={v=>setF("jobTitle",v)} placeholder="e.g. Senior Software Engineer"/>}</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 11px"}}><LInp label="LinkedIn" value={form.linkedin} onChange={v=>setF("linkedin",v)} placeholder="linkedin.com/in/name"/><LInp label="GitHub" value={form.github} onChange={v=>setF("github",v)} placeholder="github.com/username"/><LInp label="Website" value={form.website} onChange={v=>setF("website",v)} placeholder="yoursite.com"/></div>
+                <TA label="Professional Summary" value={form.summary} onChange={v=>setF("summary",v)} placeholder="Results-driven professional with X years of experience..." rows={3}/>
+              </Card>
+              <Card title="Work Experience" color={tpl.c} onAdd={()=>addI("experience",{company:"",title:"",startDate:"",endDate:"",current:false,location:"",bullets:""})} addLabel="Add Position">
+                {form.experience.map((exp,idx)=>(
+                  <div key={exp.id} style={{marginBottom:13,paddingBottom:13,borderBottom:idx<form.experience.length-1?"1px dashed #eee":"none"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontWeight:700,fontSize:12,color:tpl.c}}>{"Position "+(idx+1)}</span>{exp.current&&<span style={{background:"linear-gradient(90deg,"+tpl.c+","+tpl.a+")",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 9px",borderRadius:20}}>Current</span>}</div><RemBtn f="experience" i={idx}/></div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 11px"}}><Inp label="Job Title" value={exp.title} onChange={v=>setN("experience",idx,"title",v)}/><Inp label="Company Name" value={exp.company} onChange={v=>setN("experience",idx,"company",v)}/><MPick label="Start Date" value={exp.startDate} onChange={v=>setN("experience",idx,"startDate",v)}/>{exp.current?<div style={{marginBottom:10}}><label style={{display:"block",fontSize:10.5,fontWeight:600,color:"#555",marginBottom:2,textTransform:"uppercase",letterSpacing:0.4}}>End Date</label><div style={{padding:"6px 10px",border:"1px solid "+tpl.c+"60",borderRadius:5,fontSize:12.5,background:tpl.c+"08",color:tpl.c,fontWeight:700}}>Present</div></div>:<MPick label="End Date" value={exp.endDate} onChange={v=>setN("experience",idx,"endDate",v)}/> }<Inp label="Location" value={exp.location} onChange={v=>setN("experience",idx,"location",v)} placeholder="City, State or Remote"/></div>
+                    <label style={{display:"inline-flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:10,marginTop:2,padding:"5px 11px",background:exp.current?tpl.c+"12":"#f5f6fa",border:"1px solid "+(exp.current?tpl.c+"50":"#e0e0e0"),borderRadius:6}}><input type="checkbox" checked={exp.current} onChange={e=>{setN("experience",idx,"current",e.target.checked);if(e.target.checked)setN("experience",idx,"endDate","");}} style={{width:15,height:15,accentColor:tpl.c,cursor:"pointer"}}/><span style={{fontSize:12,fontWeight:600,color:exp.current?tpl.c:"#555"}}>I currently work here</span></label>
+                    <KwPanel jobTitle={exp.title||form.jobTitle} skills={form.skills} color={tpl.c} jdKws={jdData?jdData.keywords:[]} onInsert={kw=>insertKw(kw,idx)}/>
+                    <BulletEditor color={tpl.c} bullets={exp.bullets} onChange={v=>setN("experience",idx,"bullets",v)} isFresher={profileType==="fresher"}/>
+                  </div>
+                ))}
+              </Card>
+              <Card title="Education" color={tpl.c} onAdd={()=>addI("education",{school:"",degree:"",field:"",gpa:"",startDate:"",endDate:"",honors:""})} addLabel="Add Degree">
+                {form.education.map((edu,idx)=>(
+                  <div key={edu.id} style={{marginBottom:11,paddingBottom:11,borderBottom:idx<form.education.length-1?"1px dashed #eee":"none"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontWeight:700,fontSize:12,color:tpl.c}}>{"Degree "+(idx+1)}</span><RemBtn f="education" i={idx}/></div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 11px"}}><Inp label="University / School" value={edu.school} onChange={v=>setN("education",idx,"school",v)}/><Inp label="Degree Type" value={edu.degree} onChange={v=>setN("education",idx,"degree",v)} placeholder="Bachelor of Science"/><Inp label="Field of Study" value={edu.field} onChange={v=>setN("education",idx,"field",v)} placeholder="Computer Science"/>
+                      <div style={{marginBottom:10}}>
+                        <label style={{display:"block",fontSize:10.5,fontWeight:600,color:"#555",marginBottom:2,textTransform:"uppercase",letterSpacing:0.4}}>GPA / CGPA</label>
+                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                          <input type="number" value={edu.gpa} onChange={e=>setN("education",idx,"gpa",e.target.value)} min="0" max="10" step="0.01" placeholder="e.g. 8.5" onKeyDown={e=>{if(["e","E","+","-"].includes(e.key))e.preventDefault();}} style={{...IB,flex:1}}/>
+                          <select value={edu.gpaScale||"10"} onChange={e=>setN("education",idx,"gpaScale",e.target.value)} style={{...IB,width:"auto",flexShrink:0,paddingRight:6}}>
+                            <option value="10">/ 10</option>
+                            <option value="4">/ 4</option>
+                            <option value="100">%</option>
+                          </select>
+                        </div>
+                      </div>
+                      <MPick label="Start Date" value={edu.startDate} onChange={v=>setN("education",idx,"startDate",v)}/><MPick label="End Date" value={edu.endDate} onChange={v=>setN("education",idx,"endDate",v)}/><Inp label="Honors / Distinction" value={edu.honors} onChange={v=>setN("education",idx,"honors",v)} placeholder="First Class, Distinction"/></div>
+                  </div>
+                ))}
+              </Card>
+              <Card title="Technical Skills" color={tpl.c}>
+                {TECH_IDS.has(tpl.id)?(
+                  <div>
+                    <div style={{background:tpl.c+"08",borderRadius:6,padding:"7px 11px",marginBottom:9,fontSize:10.5,color:"#555"}}>Fill the categories that apply. These power keyword suggestions.</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 11px"}}><Inp label="Frontend" value={form.skills.frontend} onChange={v=>setSk("frontend",v)} placeholder="React, Vue, TypeScript"/><Inp label="Backend" value={form.skills.backend} onChange={v=>setSk("backend",v)} placeholder="Node.js, Python, Java"/><Inp label="Cloud" value={form.skills.cloud} onChange={v=>setSk("cloud",v)} placeholder="AWS, Azure, GCP, Docker"/><Inp label="Databases" value={form.skills.database} onChange={v=>setSk("database",v)} placeholder="PostgreSQL, MySQL, MongoDB"/><Inp label="Tools" value={form.skills.tools} onChange={v=>setSk("tools",v)} placeholder="Git, JIRA, Figma, Jenkins"/><Inp label="Other" value={form.skills.other} onChange={v=>setSk("other",v)} placeholder="Agile, Scrum, ML, Leadership"/></div>
+                  </div>
+                ):(
+                  <TA label="Technical Skills (comma-separated or one per line)" value={form.skills.other} onChange={v=>setSk("other",v)} placeholder={"List your key skills, tools and technologies relevant to this role.\nExample: Oracle Siebel, SQL, Database Management, Agile, JIRA, Communication"} rows={4}/>
+                )}
+              </Card>
+              <Card title="Certifications and Licenses" color={tpl.c} onAdd={()=>addI("certifications",{name:"",issuer:"",date:"",expiry:""})} addLabel="Add Cert">
+                {form.certifications.map((cert,idx)=>(
+                  <div key={cert.id} style={{marginBottom:9,paddingBottom:9,borderBottom:idx<form.certifications.length-1?"1px dashed #eee":"none"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><span style={{fontWeight:700,fontSize:12,color:tpl.c}}>{"Certification "+(idx+1)}</span><RemBtn f="certifications" i={idx}/></div>
+                    <div style={{display:"grid",gridTemplateColumns:"2fr 2fr 1fr 1fr",gap:"0 8px"}}><Inp label="Certification Name" value={cert.name} onChange={v=>setN("certifications",idx,"name",v)} placeholder="AWS Solutions Architect"/><Inp label="Issuing Org" value={cert.issuer} onChange={v=>setN("certifications",idx,"issuer",v)} placeholder="Amazon"/><MPick label="Issue Date" value={cert.date} onChange={v=>setN("certifications",idx,"date",v)}/><MPick label="Expiry" value={cert.expiry} onChange={v=>setN("certifications",idx,"expiry",v)}/></div>
+                  </div>
+                ))}
+              </Card>
+              {showProj&&<Card title="Projects" color={tpl.c} onAdd={()=>addI("projects",{name:"",tech:"",description:"",url:""})} addLabel="Add Project">{form.projects.map((proj,idx)=><div key={proj.id} style={{marginBottom:11,paddingBottom:11,borderBottom:idx<form.projects.length-1?"1px dashed #eee":"none"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontWeight:700,fontSize:12,color:tpl.c}}>{"Project "+(idx+1)}</span><RemBtn f="projects" i={idx}/></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 11px"}}><Inp label="Project Name" value={proj.name} onChange={v=>setN("projects",idx,"name",v)}/><Inp label="Tech Stack" value={proj.tech} onChange={v=>setN("projects",idx,"tech",v)} placeholder="React, Node.js"/><LInp label="Project URL" value={proj.url} onChange={v=>setN("projects",idx,"url",v)}/></div><TA label="Description" value={proj.description} onChange={v=>setN("projects",idx,"description",v)} rows={2} placeholder="What you built and its impact..."/></div>)}</Card>}
+              {showPub&&<Card title="Publications" color={tpl.c} onAdd={()=>addI("publications",{title:"",journal:"",year:"",authors:""})} addLabel="Add">{form.publications.map((pub,idx)=><div key={pub.id} style={{marginBottom:9,paddingBottom:9,borderBottom:idx<form.publications.length-1?"1px dashed #eee":"none"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontWeight:700,fontSize:12,color:tpl.c}}>{"Publication "+(idx+1)}</span><RemBtn f="publications" i={idx}/></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 11px"}}><Inp label="Title" value={pub.title} onChange={v=>setN("publications",idx,"title",v)}/><Inp label="Journal" value={pub.journal} onChange={v=>setN("publications",idx,"journal",v)}/><Inp label="Year" type="number" value={pub.year} onChange={v=>setN("publications",idx,"year",v)} min="1900" max="2099" placeholder="2024"/><Inp label="Authors" value={pub.authors} onChange={v=>setN("publications",idx,"authors",v)} placeholder="Smith J., Doe A."/></div></div>)}</Card>}
+              {showFed&&<Card title="Federal Application" color={tpl.c}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 11px"}}><Inp label="Citizenship" value={form.citizenship} onChange={v=>setF("citizenship",v)} placeholder="U.S. Citizen"/><Inp label="Security Clearance" value={form.securityClearance} onChange={v=>setF("securityClearance",v)} placeholder="TS/SCI"/><Inp label="Federal Grade" value={form.federalGrade} onChange={v=>setF("federalGrade",v)} placeholder="GS-13"/></div></Card>}
+              <Card title="Additional Information" color={tpl.c}><TA label="Awards and Achievements (one per line)" value={form.awards} onChange={v=>setF("awards",v)} rows={3} placeholder={"Employee of the Year 2023\nHackathon Winner"}/><TA label="Languages (comma-separated)" value={form.languages} onChange={v=>setF("languages",v)} rows={2} placeholder="English (Native), Spanish (Fluent)"/><TA label="Volunteer / Interests (optional)" value={form.volunteer} onChange={v=>setF("volunteer",v)} rows={2}/></Card>
+              <div style={{textAlign:"center",padding:"14px 0 24px"}}><button onClick={preview} style={{padding:"11px 34px",background:"linear-gradient(90deg,"+tpl.c+","+tpl.a+")",color:"#fff",border:"none",borderRadius:8,fontWeight:800,fontSize:14.5,cursor:"pointer",boxShadow:"0 4px 16px "+tpl.c+"50"}}>Preview My Resume</button></div>
+            </div>
+          </div>
+          <AdSidebar side="right"/>
+        </div>
+      </div>
+    );
+  }
+  if(step==="preview")return(
+    <div style={{height:"100vh",background:"#e8eaed",fontFamily:"'Segoe UI',sans-serif",display:"flex",flexDirection:"column"}}>
+      <div style={{background:tpl.c,padding:"10px 18px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 2px 10px rgba(0,0,0,0.19)",flexShrink:0}}>
+        <button onClick={()=>setStep("form")} style={{background:"rgba(255,255,255,0.13)",border:"none",color:"#fff",padding:"5px 11px",borderRadius:5,cursor:"pointer",fontSize:12}}>Edit</button>
+        <span style={{color:"#fff",fontWeight:700,fontSize:13.5,marginRight:"auto"}}>{tpl.n+" - Preview"}</span>
+        <button onClick={()=>{setBusy(true);dlDOCX(tpl,form);setBusy(false);}} disabled={busy} style={{background:"#1a73e8",color:"#fff",border:"none",padding:"7px 15px",borderRadius:6,fontWeight:700,fontSize:12.5,cursor:"pointer"}}>Word</button>
+        <button onClick={()=>{setBusy(true);dlPDF(tpl,form);setBusy(false);}} disabled={busy} style={{background:"#e53935",color:"#fff",border:"none",padding:"7px 15px",borderRadius:6,fontWeight:700,fontSize:12.5,cursor:"pointer"}}>PDF</button>
+      </div>
+      <div style={{background:"#fff",borderBottom:"1px solid #ddd",padding:"5px 18px",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",flexShrink:0}}>
+        <div style={{background:"#e8f5e9",border:"1px solid #81c784",borderRadius:5,padding:"3px 11px",fontSize:11,fontWeight:700,color:"#2e7d32"}}>ATS Score: 95%+</div>
+        {["Bullet points","1.15 line-height","Keywords bolded","Photo-left layout"].map((b,i)=><div key={i} style={{background:"#e3f2fd",border:"1px solid #90caf9",borderRadius:5,padding:"3px 10px",fontSize:10.5,color:"#1565c0"}}>{"+ "+b}</div>)}
+      </div>
+      <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+        <AdSidebar side="left"/>
+        <div style={{flex:1,overflowY:"auto",padding:"18px 14px"}}><div style={{maxWidth:790,margin:"0 auto",background:"#fff",boxShadow:"0 6px 28px rgba(0,0,0,0.12)",borderRadius:2}}><div dangerouslySetInnerHTML={{__html:html}}/></div></div>
+        <AdSidebar side="right"/>
+      </div>
+    </div>
+  );
+  return null;
+}
+const root=ReactDOM.createRoot(document.getElementById("root"));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>
